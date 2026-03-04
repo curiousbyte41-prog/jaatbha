@@ -1,24 +1,34 @@
 <?php
 /**
- * XYRO ELITE BOT - ULTIMATE EDITION
+ * BS XYRO BOT - ULTIMATE EDITION WITH ADMIN PRICE CONTROL
  * @author @HELOBIY41
- * @version 6.0 - Complete with all improvements
  */
 
 // ===== CONFIGURATION =====
-$botToken = "8783459954:AAGAf-LwIZEtaPyxIaw1imq-dBLuf4QshBc";
+$botToken = "8783459954:AAGAF-LwI2EtaPxyXaNlJmg-d8Luf4QshBC";
 $ownerId = 6185091342;
 $ownerUsername = "@HELOBIY41";
-$botName = "⚡️ XYRO ELITE";
+$botName = "⚡️ BS XYRO";
 $website = "https://api.telegram.org/bot".$botToken;
 
 // ===== CHANNELS/GROUPS =====
 $channels = [
-    ['name' => 'XYRO REDIRECT', 'link' => 'https://t.me/RG3741'],
-    ['name' => 'XYRO STATS', 'link' => 'https://t.me/RG374'],
-    ['name' => 'XYRO GROUP', 'link' => 'https://t.me/+dBq_hcC66UUzYTY1'],
-    ['name' => 'XYRO HITS', 'link' => 'https://t.me/+WeL7kfcghSUxYWNl']
+    ['name' => 'XYRO REDIRECT', 'link' => 'https://t.me/RG3741', 'username' => '@RG3741'],
+    ['name' => 'XYRO STATS', 'link' => 'https://t.me/RG374', 'username' => '@RG374'],
+    ['name' => 'XYRO GROUP', 'link' => 'https://t.me/+dBq_hcC66UUzYTY1', 'username' => 'group'],
+    ['name' => 'XYRO HITS', 'link' => 'https://t.me/+WeL7kfcghSUxYWNl', 'username' => 'group']
 ];
+
+// ===== DEFAULT PRICES =====
+$defaultPrices = [
+    'daily' => ['usd' => 1, 'inr' => 80],
+    'weekly' => ['usd' => 3, 'inr' => 250],
+    'monthly' => ['usd' => 8, 'inr' => 600],
+    'yearly' => ['usd' => 30, 'inr' => 2500]
+];
+
+// ===== FREE GATES =====
+$freeGates = ['/chk', '/au', '/vbv']; // 3 free gates with speed limit
 
 // ===== DATABASE FILES =====
 $usersDB = "users.json";
@@ -26,12 +36,11 @@ $livesDB = "lives.json";
 $statsDB = "stats.json";
 $adminDB = "admin.json";
 $keysDB = "keys.json";
-$settingsDB = "settings.json";
-$gatesDB = "gates.json";
-$toolsDB = "tools.json";
+$pricesDB = "prices.json";
+$logsDB = "logs.json";
 
 // Create files if not exist
-$files = [$usersDB, $livesDB, $statsDB, $adminDB, $keysDB, $settingsDB, $gatesDB, $toolsDB];
+$files = [$usersDB, $livesDB, $statsDB, $adminDB, $keysDB, $pricesDB, $logsDB];
 foreach ($files as $file) {
     if (!file_exists($file)) file_put_contents($file, json_encode([]));
 }
@@ -41,6 +50,13 @@ $admins = json_decode(file_get_contents($adminDB), true);
 if (empty($admins)) {
     $admins[] = $ownerId;
     file_put_contents($adminDB, json_encode($admins));
+}
+
+// Initialize prices
+$prices = json_decode(file_get_contents($pricesDB), true);
+if (empty($prices)) {
+    $prices = $defaultPrices;
+    file_put_contents($pricesDB, json_encode($prices, JSON_PRETTY_PRINT));
 }
 
 // ===== FUNCTIONS =====
@@ -89,554 +105,105 @@ function editMessage($chatId, $msgId, $text, $buttons = null) {
     return @file_get_contents($url);
 }
 
-// ===== UI IMPROVEMENTS =====
-
-// 1. ANIMATION FRAMES
-function getAnimationFrame($index) {
-    $frames = ['◐', '◓', '◑', '◒'];
-    return $frames[$index % 4];
-}
-
-// 2. GRADIENT BOXES
-function gradientBox($title, $content, $type = 'normal') {
-    $gradients = [
-        'normal' => ['╔', '╗', '╚', '╝', '═', '║'],
-        'double' => ['╔', '╗', '╚', '╝', '═', '║'],
-        'rounded' => ['╭', '╮', '╰', '╯', '─', '│']
+// ===== LOG FUNCTION =====
+function addLog($type, $userId, $details) {
+    global $logsDB;
+    $logs = json_decode(file_get_contents($logsDB), true);
+    $logs[] = [
+        'type' => $type,
+        'user_id' => $userId,
+        'details' => $details,
+        'time' => date('Y-m-d H:i:s')
     ];
-    $g = $gradients[$type] ?? $gradients['normal'];
-    
-    return "{$g[0]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[1]}\n" .
-           "{$g[5]}    「 $title 」     {$g[5]}\n" .
-           "{$g[5]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[5]}\n" .
-           $content .
-           "{$g[2]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[4]}{$g[3]}";
+    if (count($logs) > 1000) array_shift($logs);
+    file_put_contents($logsDB, json_encode($logs, JSON_PRETTY_PRINT));
 }
 
-// 3. PROGRESS BAR
-function progressBar($current, $total, $width = 20) {
-    $percentage = ($current / max($total, 1)) * 100;
-    $filled = round(($percentage / 100) * $width);
-    $empty = $width - $filled;
+// ===== CHECK CHANNEL JOIN =====
+function checkChannelJoin($userId) {
+    global $website, $channels;
     
-    return "[" . str_repeat("█", $filled) . str_repeat("░", $empty) . "] " . round($percentage, 1) . "%";
-}
-
-// 4. CARD PREVIEW
-function cardPreview($card, $status, $response, $time) {
-    $parts = explode('|', $card);
-    $cc = substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
-    
-    $statusIcon = $status == 'LIVE' ? '🟢' : ($status == 'CCN' ? '🟡' : '🔴');
-    
-    return "
-┌─────────────────────┐
-│ 💳 $cc  │
-│ 📅 {$parts[1]}|{$parts[2]}  🔒 {$parts[3]}     │
-├─────────────────────┤
-│ $statusIcon $status  $response  │
-│ ⏱️ $time seconds            │
-└─────────────────────┘";
-}
-
-// 5. RANKING BADGES
-function getUserRank($userId) {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    $checks = $users[$userId]['checks'] ?? 0;
-    
-    if ($checks >= 1000) return "👑 LEGEND";
-    if ($checks >= 500) return "⭐ ELITE";
-    if ($checks >= 100) return "💎 PRO";
-    return "🔰 BEGINNER";
-}
-
-// 6. COLORED STATUS
-function colorStatus($status) {
-    $colors = [
-        'LIVE' => '🟢',
-        'DEAD' => '🔴',
-        'CCN' => '🟡',
-        'RISK' => '🟠'
-    ];
-    return ($colors[$status] ?? '⚪') . " " . $status;
-}
-
-// 7. 3D BUTTONS (simulated in text)
-function button3D($text, $active = true) {
-    if ($active) {
-        return "╔════╗\n║$text║\n╚════╝";
-    } else {
-        return "┌────┐\n│$text│\n└────┘";
-    }
-}
-
-// 8. TYPING ANIMATION (simulated)
-function typingEffect($text) {
-    return "`" . $text . "`";
-}
-
-// 9. GLOWING BADGE
-function glowingBadge($text) {
-    return "
-⭐══════════⭐
-   $text
-⭐══════════⭐";
-}
-
-// 10. LIVE COUNTERS
-function getLiveCounters() {
-    global $statsDB;
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $today = date('Y-m-d');
-    
-    $todayChecks = $stats[$today]['total'] ?? 0;
-    $todayLives = $stats[$today]['lives'] ?? 0;
-    
-    // Calculate last hour
-    $lastHour = 0;
-    $currentHour = date('H');
-    foreach ($stats as $day => $s) {
-        if ($day == $today) {
-            $lastHour = $s['total'] ?? 0;
-            break;
-        }
-    }
-    
-    // Calculate per minute (approx)
-    $perMinute = round($lastHour / 60, 1);
-    
-    return [
-        'today' => number_format($todayChecks),
-        'today_lives' => number_format($todayLives),
-        'hour' => number_format($lastHour),
-        'minute' => $perMinute
-    ];
-}
-
-// ===== GATES IMPROVEMENTS =====
-
-// 1. GATE CATEGORIES
-function getGateCategories() {
-    return [
-        ['text' => "💳 AUTH GATES", 'callback' => "cat_auth"],
-        ['text' => "💰 CHARGE GATES", 'callback' => "cat_charge"],
-        ['text' => "🛍️ SHOPIFY GATES", 'callback' => "cat_shopify"],
-        ['text' => "📦 MASS GATES", 'callback' => "cat_mass"]
-    ];
-}
-
-// 2. GATE STATS
-function getGateStats($gate) {
-    global $statsDB;
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $today = date('Y-m-d');
-    
-    $total = 0;
-    $lives = 0;
-    
-    foreach ($stats as $day => $s) {
-        if (isset($s['gates'][$gate])) {
-            $total += $s['gates'][$gate];
-        }
-        if ($day == $today && isset($s['gates'][$gate])) {
-            $lives += $s['lives'] ?? 0;
-        }
-    }
-    
-    $rate = $total > 0 ? round(($lives / $total) * 100, 1) : 0;
-    
-    return [
-        'total' => $total,
-        'lives' => $lives,
-        'rate' => $rate,
-        'avg_time' => round(rand(12, 35) / 10, 1) // Simulated
-    ];
-}
-
-// 3. RECOMMENDED GATES
-function getRecommendedGates() {
-    $gates = ['/st', '/au', '/pp', '/chk'];
-    $stats = [];
-    
-    foreach ($gates as $gate) {
-        $gateStats = getGateStats(str_replace('/', '', $gate));
-        $stats[$gate] = $gateStats['rate'];
-    }
-    
-    arsort($stats);
-    return array_slice($stats, 0, 3, true);
-}
-
-// 4. GATE FILTERS
-function getGateFilters() {
-    return [
-        ['text' => "🇺🇸 US Only", 'callback' => "filter_us"],
-        ['text' => "🌍 Global", 'callback' => "filter_global"],
-        ['text' => "💰 $1+", 'callback' => "filter_high"],
-        ['text' => "💳 Auth", 'callback' => "filter_auth"]
-    ];
-}
-
-// 5. QUICK COMMANDS
-function getQuickCommands($userId) {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    $lastCard = $users[$userId]['last_card'] ?? '';
-    
-    return [
-        'last_card' => $lastCard,
-        'test_card' => '4111111111111111|12|25|123'
-    ];
-}
-
-// 6. BATCH PROCESSING
-function formatBatchProgress($current, $total, $lives, $dead) {
-    return gradientBox("BATCH CHECK", "
-⏱️ Progress: " . progressBar($current, $total) . "
-✅ Lives: $lives
-❌ Dead: $dead
-⏱️ ETA: " . round(($total - $current) * 2) . " seconds
-    ");
-}
-
-// 7. GATE HEALTH
-function getGateHealth() {
-    $gates = ['/st', '/au', '/pp', '/chk', '/sh'];
-    $health = [];
-    
-    foreach ($gates as $gate) {
-        $stats = getGateStats(str_replace('/', '', $gate));
-        $success = $stats['rate'];
+    foreach ($channels as $channel) {
+        if ($channel['username'] == 'group') continue; // Skip groups (can't check)
         
-        if ($success > 70) $status = "🟢 Online";
-        elseif ($success > 40) $status = "🟡 Slow";
-        else $status = "🔴 Down";
+        $chat = str_replace('@', '', $channel['username']);
+        $url = $website . "/getChatMember?chat_id=@$chat&user_id=$userId";
+        $result = @json_decode(file_get_contents($url), true);
         
-        $health[] = "$gate - $status";
-    }
-    
-    return $health;
-}
-
-// 8. SAVED CARDS
-function saveLastCard($userId, $card) {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    $users[$userId]['last_card'] = $card;
-    $users[$userId]['last_check'] = time();
-    file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
-}
-
-// 9. GATE NOTES
-function getGateNotes() {
-    return [
-        '/st' => "Best for US cards, works 24/7",
-        '/au' => "Works with EU cards, high success",
-        '/pp' => "Low amount, good for testing"
-    ];
-}
-
-// 10. GATE SCHEDULER (simulated)
-function getSchedulerOptions() {
-    return [
-        ['text' => "⏱️ Every 5 min", 'callback' => "sched_5"],
-        ['text' => "⏱️ Every 30 min", 'callback' => "sched_30"],
-        ['text' => "⏱️ Every hour", 'callback' => "sched_60"]
-    ];
-}
-
-// ===== TOOLS IMPROVEMENTS =====
-
-// 1. BIN DATABASE
-function getBinStats() {
-    return [
-        'total' => '500,000+',
-        'new_today' => '1,234',
-        'popular' => '400022 (VISA)'
-    ];
-}
-
-// 2. SMART GENERATOR
-function smartGenerator($bin, $count = 10) {
-    $cards = [];
-    for ($i = 0; $i < $count; $i++) {
-        $cc = $bin;
-        while (strlen($cc) < 15) {
-            $cc .= rand(0, 9);
+        if (!$result['ok']) return false;
+        
+        $status = $result['result']['status'];
+        if (!in_array($status, ['member', 'administrator', 'creator'])) {
+            return false;
         }
-        
-        // Luhn check digit
-        $digits = str_split($cc);
-        $sum = 0;
-        $alt = true;
-        for ($j = count($digits) - 1; $j >= 0; $j--) {
-            $d = (int)$digits[$j];
-            if ($alt) {
-                $d *= 2;
-                if ($d > 9) $d -= 9;
-            }
-            $sum += $d;
-            $alt = !$alt;
-        }
-        $check = (10 - ($sum % 10)) % 10;
-        $cc .= $check;
-        
-        $month = str_pad(rand(1, 12), 2, '0', STR_PAD_LEFT);
-        $year = rand(25, 30);
-        $cvv = rand(100, 999);
-        
-        $cards[] = "$cc|$month|$year|$cvv";
     }
-    return $cards;
+    return true;
 }
 
-// 3. PROXY MANAGER
-function getProxyStats() {
-    return [
-        'live' => rand(40, 60),
-        'dead' => rand(30, 50),
-        'avg_speed' => round(rand(80, 150) / 100, 1)
-    ];
-}
-
-// 4. ADDRESS GENERATOR PRO
-function getCountryOptions() {
-    return [
-        ['text' => "🇺🇸 USA", 'callback' => "addr_us"],
-        ['text' => "🇬🇧 UK", 'callback' => "addr_uk"],
-        ['text' => "🇨🇦 CA", 'callback' => "addr_ca"],
-        ['text' => "🇦🇺 AUS", 'callback' => "addr_au"],
-        ['text' => "🇮🇳 IND", 'callback' => "addr_in"],
-        ['text' => "🌍 More", 'callback' => "addr_more"]
-    ];
-}
-
-// 5. KEY CHECKER PRO
-function checkStripeKey($key) {
-    if (strpos($key, 'pk_live') === 0) return "✅ LIVE KEY";
-    if (strpos($key, 'sk_live') === 0) return "⚠️ NEED AUTH";
-    if (strpos($key, 'pk_test') === 0) return "🧪 TEST KEY";
-    return "❌ INVALID";
-}
-
-// 6. SCRAPER TOOL
-function formatScraperProgress($found, $dupes) {
-    return gradientBox("CHANNEL SCRAPER", "
-📥 Found: $found cards
-🔄 Duplicates: $dupes
-📊 Unique: " . ($found - $dupes) . "
-    ");
-}
-
-// 7. CARD VALIDATOR
-function validateCard($card) {
-    $parts = explode('|', $card);
-    if (count($parts) != 4) return ['valid' => false, 'reason' => 'Invalid format'];
+// ===== GET VERIFY BUTTONS =====
+function getVerifyButtons() {
+    global $channels;
+    $buttons = [];
     
-    $cc = $parts[0];
-    $month = $parts[1];
-    $year = $parts[2];
-    $cvv = $parts[3];
-    
-    // Luhn check
-    $digits = str_split($cc);
-    $sum = 0;
-    $alt = true;
-    for ($i = count($digits) - 1; $i >= 0; $i--) {
-        $d = (int)$digits[$i];
-        if ($alt) {
-            $d *= 2;
-            if ($d > 9) $d -= 9;
-        }
-        $sum += $d;
-        $alt = !$alt;
+    // Add channel buttons (4 buttons)
+    foreach ($channels as $channel) {
+        $buttons[] = [['text' => "📢 Join {$channel['name']}", 'url' => $channel['link']]];
     }
-    $luhnValid = ($sum % 10 == 0);
+    // Add verify button
+    $buttons[] = [['text' => "✅ I'VE JOINED", 'callback_data' => "verify"]];
     
-    // Expiry check
-    $currentYear = date('y');
-    $currentMonth = date('m');
-    $expiryValid = ($year > $currentYear) || ($year == $currentYear && $month >= $currentMonth);
-    
-    // CVV check
-    $cvvValid = (strlen($cvv) == 3 || (($cc[0] == '3') && strlen($cvv) == 4));
-    
-    $type = getCardType($cc);
-    
+    return $buttons;
+}
+
+// ===== GET MAIN MENU BUTTONS =====
+function getMainMenuButtons() {
     return [
-        'valid' => $luhnValid && $expiryValid && $cvvValid,
-        'luhn' => $luhnValid ? '✅' : '❌',
-        'expiry' => $expiryValid ? '✅' : '❌',
-        'cvv' => $cvvValid ? '✅' : '❌',
-        'type' => $type
+        [['text' => "💳 GATES", 'callback_data' => "menu_gates"]],
+        [['text' => "🛠️ TOOLS", 'callback_data' => "menu_tools"]],
+        [['text' => "💰 PRICING", 'callback_data' => "menu_pricing"]],
+        [['text' => "👑 ADMIN", 'callback_data' => "menu_admin"]]
     ];
 }
 
-function getCardType($cc) {
-    $first = substr($cc, 0, 1);
-    $first2 = substr($cc, 0, 2);
-    
-    if ($first == '4') return 'VISA';
-    if ($first2 >= '51' && $first2 <= '55') return 'MASTERCARD';
-    if ($first2 == '34' || $first2 == '37') return 'AMEX';
-    if ($first2 == '60' || $first2 == '65') return 'DISCOVER';
-    return 'UNKNOWN';
-}
-
-// 8. BATCH TOOLS
-function getBatchOptions() {
+// ===== GET PRICING BUTTONS =====
+function getPricingButtons() {
     return [
-        ['text' => "🔍 Check All BINs", 'callback' => "batch_bin"],
-        ['text' => "🎴 Generate 100", 'callback' => "batch_gen"],
-        ['text' => "🌐 Test Proxies", 'callback' => "batch_proxy"]
+        [['text' => "⚡ DAILY", 'callback_data' => "price_daily"]],
+        [['text' => "📅 WEEKLY", 'callback_data' => "price_weekly"]],
+        [['text' => "🔥 MONTHLY", 'callback_data' => "price_monthly"]],
+        [['text' => "💎 YEARLY", 'callback_data' => "price_yearly"]],
+        [['text' => "🎟️ REDEEM", 'callback_data' => "buy_redeem"]],
+        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
     ];
 }
 
-// 9. HISTORY
-function getUserHistory($userId, $limit = 10) {
-    global $livesDB;
-    $lives = json_decode(file_get_contents($livesDB), true);
-    $userLives = array_filter($lives, fn($l) => $l['user'] == $userId);
-    return array_slice(array_reverse($userLives), 0, $limit);
-}
-
-// 10. FAVORITES
-function getFavoriteTools() {
+// ===== GET ADMIN PRICE BUTTONS =====
+function getAdminPriceButtons() {
     return [
-        ['text' => "🔍 /bin", 'callback' => "fav_bin"],
-        ['text' => "🎴 /gen", 'callback' => "fav_gen"],
-        ['text' => "📍 /rand", 'callback' => "fav_rand"]
+        [['text' => "💰 Edit Daily Price", 'callback_data' => "admin_price_daily"]],
+        [['text' => "💰 Edit Weekly Price", 'callback_data' => "admin_price_weekly"]],
+        [['text' => "💰 Edit Monthly Price", 'callback_data' => "admin_price_monthly"]],
+        [['text' => "💰 Edit Yearly Price", 'callback_data' => "admin_price_yearly"]],
+        [['text' => "📊 View Current Prices", 'callback_data' => "admin_view_prices"]],
+        [['text' => "📋 Price Logs", 'callback_data' => "admin_price_logs"]],
+        [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
     ];
 }
 
-// ===== ADMIN IMPROVEMENTS =====
-
-// 1. DASHBOARD
-function getAdminDashboard() {
-    global $usersDB, $statsDB, $keysDB;
-    
-    $users = json_decode(file_get_contents($usersDB), true);
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $keys = json_decode(file_get_contents($keysDB), true);
-    
-    $totalChecks = 0;
-    $totalLives = 0;
-    foreach ($stats as $day => $s) {
-        $totalChecks += $s['total'] ?? 0;
-        $totalLives += $s['lives'] ?? 0;
-    }
-    
-    $premium = count(array_filter($users, fn($u) => $u['plan'] == 'premium'));
-    $activeKeys = count(array_filter($keys, fn($k) => $k['active']));
-    
-    return gradientBox("ADMIN DASHBOARD", "
-👥 Users: " . count($users) . "
-⭐ Premium: $premium
-🔑 Active Keys: $activeKeys
-📊 Total Checks: " . number_format($totalChecks) . "
-💚 Total Lives: " . number_format($totalLives) . "
-📈 Rate: " . round(($totalLives / max($totalChecks, 1)) * 100, 1) . "%
-    ");
-}
-
-// 2. USER MANAGEMENT
-function getUserManagementButtons() {
+// ===== GET ADMIN MENU BUTTONS =====
+function getAdminMenuButtons() {
     return [
-        ['text' => "👥 List Users", 'callback' => "admin_users"],
-        ['text' => "⭐ Premium Users", 'callback' => "admin_premium"],
-        ['text' => "🆕 New Today", 'callback' => "admin_new"],
-        ['text' => "🔍 Search User", 'callback' => "admin_search"]
+        [['text' => "📊 Dashboard", 'callback_data' => "admin_dash"]],
+        [['text' => "👥 Users", 'callback_data' => "admin_users"]],
+        [['text' => "💰 Prices", 'callback_data' => "admin_prices"]],
+        [['text' => "🔑 Keys", 'callback_data' => "admin_keys"]],
+        [['text' => "📢 Broadcast", 'callback_data' => "admin_broadcast"]],
+        [['text' => "📋 Logs", 'callback_data' => "admin_logs"]],
+        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
     ];
 }
 
-// 3. GATE CONTROL
-function getGateControlButtons() {
-    return [
-        ['text' => "🟢 /st - ON", 'callback' => "gate_st_on"],
-        ['text' => "🟢 /au - ON", 'callback' => "gate_au_on"],
-        ['text' => "🟡 /pp - SLOW", 'callback' => "gate_pp_slow"],
-        ['text' => "🔴 /chk - OFF", 'callback' => "gate_chk_off"]
-    ];
-}
-
-// 4. BROADCAST PRO
-function formatBroadcastProgress($sent, $total) {
-    return gradientBox("BROADCAST", "
-👥 Total: $total
-📨 Sent: $sent
-📊 " . progressBar($sent, $total) . "
-    ");
-}
-
-// 5. STATISTICS
-function getDetailedStats() {
-    global $statsDB;
-    $stats = json_decode(file_get_contents($statsDB), true);
-    
-    $weekly = [];
-    for ($i = 6; $i >= 0; $i--) {
-        $day = date('Y-m-d', strtotime("-$i days"));
-        $weekly[$day] = [
-            'checks' => $stats[$day]['total'] ?? 0,
-            'lives' => $stats[$day]['lives'] ?? 0
-        ];
-    }
-    
-    return $weekly;
-}
-
-// 6. KEY GENERATOR PRO
-function getKeyGenOptions() {
-    return [
-        ['text' => "⚡ Daily (1 day)", 'callback' => "key_daily"],
-        ['text' => "📅 Weekly (7 days)", 'callback' => "key_weekly"],
-        ['text' => "🔥 Monthly (30)", 'callback' => "key_monthly"],
-        ['text' => "💎 Yearly (365)", 'callback' => "key_yearly"],
-        ['text' => "🎟️ Bulk (10)", 'callback' => "key_bulk"]
-    ];
-}
-
-// 7. LOGS VIEWER
-function getLogCategories() {
-    return [
-        ['text' => "💚 Lives Log", 'callback' => "log_lives"],
-        ['text' => "❌ Errors", 'callback' => "log_errors"],
-        ['text' => "👥 Users", 'callback' => "log_users"],
-        ['text' => "💰 Payments", 'callback' => "log_payments"]
-    ];
-}
-
-// 8. BACKUP SYSTEM
-function getBackupOptions() {
-    return [
-        ['text' => "📁 Backup DB", 'callback' => "backup_db"],
-        ['text' => "📁 Backup Users", 'callback' => "backup_users"],
-        ['text' => "📁 Backup Keys", 'callback' => "backup_keys"],
-        ['text' => "🔄 Restore", 'callback' => "backup_restore"]
-    ];
-}
-
-// 9. BAN SYSTEM
-function getBanOptions() {
-    return [
-        ['text' => "🔨 Ban User", 'callback' => "ban_user"],
-        ['text' => "🔓 Unban User", 'callback' => "unban_user"],
-        ['text' => "📋 Banned List", 'callback' => "ban_list"]
-    ];
-}
-
-// 10. ANNOUNCEMENTS
-function getAnnouncementOptions() {
-    return [
-        ['text' => "📢 New Gate", 'callback' => "ann_gate"],
-        ['text' => "🔧 Maintenance", 'callback' => "ann_maintenance"],
-        ['text' => "🎉 Giveaway", 'callback' => "ann_giveaway"]
-    ];
-}
-
-// ===== USER FUNCTIONS =====
-
+// ===== REGISTER USER =====
 function registerUser($userId, $username, $firstname) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
@@ -651,12 +218,12 @@ function registerUser($userId, $username, $firstname) {
             'lives' => 0,
             'plan' => 'free',
             'expiry' => 0,
-            'last_card' => '',
+            'verified' => false,
             'last_check' => 0,
-            'banned' => false,
-            'favorites' => []
+            'banned' => false
         ];
         file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
+        addLog('register', $userId, "New user registered");
         return true;
     }
     return false;
@@ -666,6 +233,12 @@ function isRegistered($userId) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
     return isset($users[$userId]);
+}
+
+function isVerified($userId) {
+    global $usersDB;
+    $users = json_decode(file_get_contents($usersDB), true);
+    return isset($users[$userId]) && ($users[$userId]['verified'] || $users[$userId]['plan'] != 'free');
 }
 
 function isAdmin($userId) {
@@ -678,6 +251,7 @@ function isPremium($userId) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
     if (!isset($users[$userId])) return false;
+    if ($users[$userId]['banned']) return false;
     return $users[$userId]['plan'] == 'premium' && $users[$userId]['expiry'] > time();
 }
 
@@ -691,81 +265,92 @@ function getUserPlan($userId) {
     return "🆓 FREE";
 }
 
-function getSuccessRate($userId) {
+// ===== CHECK RATE LIMIT =====
+function checkRateLimit($userId) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
-    $user = $users[$userId] ?? [];
-    $checks = $user['checks'] ?? 0;
-    $lives = $user['lives'] ?? 0;
-    return $checks > 0 ? round(($lives / $checks) * 100, 1) : 0;
-}
-
-function getUserData($userId) {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    return $users[$userId] ?? [];
-}
-
-function getLiveStats() {
-    global $statsDB, $usersDB, $livesDB;
     
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $users = json_decode(file_get_contents($usersDB), true);
-    $lives = json_decode(file_get_contents($livesDB), true);
+    if (!isset($users[$userId])) return true;
+    if ($users[$userId]['banned']) return false;
     
-    $today = date('Y-m-d');
-    $todayStats = $stats[$today] ?? ['total' => 0, 'lives' => 0];
+    $lastCheck = $users[$userId]['last_check'] ?? 0;
+    $timeDiff = time() - $lastCheck;
     
-    $totalChecks = 0;
-    $totalLives = 0;
-    foreach ($stats as $day => $s) {
-        $totalChecks += $s['total'] ?? 0;
-        $totalLives += $s['lives'] ?? 0;
+    // Premium users: no limit
+    if ($users[$userId]['plan'] == 'premium') return true;
+    
+    // Free users: 10 second limit
+    if ($timeDiff < 10) {
+        return 10 - $timeDiff;
     }
     
-    return [
-        'today' => number_format($todayStats['total']),
-        'today_lives' => number_format($todayStats['lives']),
-        'total_checks' => number_format($totalChecks),
-        'total_lives' => number_format($totalLives),
-        'users' => number_format(count($users)),
-        'recent_lives' => count($lives)
-    ];
+    return true;
 }
 
-function getTotalUsers() {
+function updateLastCheck($userId) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
-    return count($users);
+    $users[$userId]['last_check'] = time();
+    file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
 }
 
-function getPremiumUsers() {
+// ===== BAN FUNCTIONS =====
+function banUser($userId) {
     global $usersDB;
     $users = json_decode(file_get_contents($usersDB), true);
-    return count(array_filter($users, fn($u) => $u['plan'] == 'premium' && $u['expiry'] > time()));
+    if (isset($users[$userId])) {
+        $users[$userId]['banned'] = true;
+        file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
+        addLog('ban', $userId, "User banned");
+        return true;
+    }
+    return false;
 }
 
-function getTodayChecks() {
-    global $statsDB;
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $today = date('Y-m-d');
-    return $stats[$today]['total'] ?? 0;
+function unbanUser($userId) {
+    global $usersDB;
+    $users = json_decode(file_get_contents($usersDB), true);
+    if (isset($users[$userId])) {
+        $users[$userId]['banned'] = false;
+        file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
+        addLog('unban', $userId, "User unbanned");
+        return true;
+    }
+    return false;
 }
 
-function getTodayLives() {
-    global $statsDB;
-    $stats = json_decode(file_get_contents($statsDB), true);
-    $today = date('Y-m-d');
-    return $stats[$today]['lives'] ?? 0;
+function isBanned($userId) {
+    global $usersDB;
+    $users = json_decode(file_get_contents($usersDB), true);
+    return isset($users[$userId]) && $users[$userId]['banned'];
 }
 
-function getTodayRevenue() {
-    return rand(50, 200); // Simulated
+// ===== PRICE FUNCTIONS =====
+function updatePrice($plan, $usd, $inr, $adminId) {
+    global $pricesDB;
+    $prices = json_decode(file_get_contents($pricesDB), true);
+    
+    $oldPrice = $prices[$plan] ?? ['usd' => 0, 'inr' => 0];
+    $prices[$plan] = ['usd' => $usd, 'inr' => $inr];
+    file_put_contents($pricesDB, json_encode($prices, JSON_PRETTY_PRINT));
+    
+    addLog('price_change', $adminId, "Changed $plan from \${$oldPrice['usd']}/₹{$oldPrice['inr']} to \$$usd/₹$inr");
+    return true;
+}
+
+function getPrice($plan) {
+    global $pricesDB;
+    $prices = json_decode(file_get_contents($pricesDB), true);
+    return $prices[$plan] ?? ['usd' => 0, 'inr' => 0];
+}
+
+function getAllPrices() {
+    global $pricesDB;
+    return json_decode(file_get_contents($pricesDB), true);
 }
 
 // ===== KEY FUNCTIONS =====
-
-function generateKey($plan, $duration) {
+function generateKey($plan, $days) {
     global $keysDB;
     
     $key = strtoupper(substr(md5(uniqid() . rand(1000, 9999)), 0, 16));
@@ -775,14 +360,15 @@ function generateKey($plan, $duration) {
     $keys = json_decode(file_get_contents($keysDB), true);
     $keys[$key] = [
         'plan' => $plan,
-        'duration' => $duration,
+        'days' => $days,
         'created' => time(),
-        'expiry' => time() + ($duration * 86400),
         'used_by' => null,
+        'used_at' => null,
         'active' => true
     ];
     file_put_contents($keysDB, json_encode($keys, JSON_PRETTY_PRINT));
     
+    addLog('key_gen', 0, "Generated key: $key for $plan ($days days)");
     return $key;
 }
 
@@ -804,28 +390,217 @@ function redeemKey($userId, $key) {
         return ['success' => false, 'msg' => '❌ Key already used!'];
     }
     
-    if ($keyData['expiry'] < time()) {
-        return ['success' => false, 'msg' => '❌ Key expired!'];
-    }
-    
     $users = json_decode(file_get_contents($usersDB), true);
     $users[$userId]['plan'] = 'premium';
-    $users[$userId]['expiry'] = time() + ($keyData['duration'] * 86400);
+    $users[$userId]['expiry'] = time() + ($keyData['days'] * 86400);
     file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
     
     $keys[$formattedKey]['active'] = false;
     $keys[$formattedKey]['used_by'] = $userId;
+    $keys[$formattedKey]['used_at'] = time();
     file_put_contents($keysDB, json_encode($keys, JSON_PRETTY_PRINT));
+    
+    addLog('redeem', $userId, "Redeemed key: $formattedKey for {$keyData['days']} days");
     
     $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
     return [
         'success' => true, 
-        'msg' => "✅ Premium Activated!\nPlan: {$planNames[$keyData['plan']]}\nDuration: {$keyData['duration']} days"
+        'msg' => "✅ Premium Activated!\nPlan: {$planNames[$keyData['plan']]}\nDuration: {$keyData['days']} days"
     ];
 }
 
-// ===== PARSE CARD =====
+// ===== WELCOME MESSAGE =====
+function getWelcomeMessage($userId, $username, $firstname) {
+    $plan = getUserPlan($userId);
+    
+    $msg = "
+╔══════════════════════╗
+║   「 👋 WELCOME 」    ║
+╚══════════════════════╝
 
+Hey <b>$firstname</b>! 👋
+Welcome to <b>BS XYRO</b> ⚡️
+
+━━━━━━━━━━━━━━━━━━━━━━
+👤 <b>User:</b> @$username
+💎 <b>Plan:</b> $plan
+━━━━━━━━━━━━━━━━━━━━━━
+
+📢 <b>Note:</b>
+Please join all channels/groups
+to access the bot!
+
+👇 <b>Click buttons below</b>
+";
+    
+    return $msg;
+}
+
+// ===== GET PRICING MESSAGE =====
+function getPricingMessage() {
+    $prices = getAllPrices();
+    
+    $msg = "
+╔══════════════════════╗
+║   「 💰 PRICING 」    ║
+╠══════════════════════╣
+║ <b>Premium Plans:</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ ⚡ <b>DAILY</b>
+║   • \${$prices['daily']['usd']} / ₹{$prices['daily']['inr']}
+║   • 1 Day Access
+║
+║ 📅 <b>WEEKLY</b>
+║   • \${$prices['weekly']['usd']} / ₹{$prices['weekly']['inr']}
+║   • 7 Days Access
+║
+║ 🔥 <b>MONTHLY</b> (Best Value)
+║   • \${$prices['monthly']['usd']} / ₹{$prices['monthly']['inr']}
+║   • 30 Days Access
+║
+║ 💎 <b>YEARLY</b>
+║   • \${$prices['yearly']['usd']} / ₹{$prices['yearly']['inr']}
+║   • 365 Days Access
+╠══════════════════════╣
+║ <b>Benefits:</b>
+║ • All Premium Gates
+║ • No Rate Limits
+║ • Priority Support
+║ • Higher Success Rate
+╠══════════════════════╣
+║ Contact @HELOBIY41 to buy
+║ Or use /redeem with key
+╚══════════════════════╝
+";
+    
+    return $msg;
+}
+
+// ===== GET ADMIN PRICE MESSAGE =====
+function getAdminPriceMessage() {
+    $prices = getAllPrices();
+    
+    $msg = "
+╔══════════════════════╗
+║   「 💰 PRICE MGMT 」 ║
+╠══════════════════════╣
+║ <b>Current Prices:</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ ⚡ Daily   → \${$prices['daily']['usd']} / ₹{$prices['daily']['inr']}
+║ 📅 Weekly  → \${$prices['weekly']['usd']} / ₹{$prices['weekly']['inr']}
+║ 🔥 Monthly → \${$prices['monthly']['usd']} / ₹{$prices['monthly']['inr']}
+║ 💎 Yearly  → \${$prices['yearly']['usd']} / ₹{$prices['yearly']['inr']}
+╠══════════════════════╣
+║ <b>Commands:</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ <code>/setprice daily 1 80</code>
+║ <code>/setprice weekly 3 250</code>
+║ <code>/setprice monthly 8 600</code>
+║ <code>/setprice yearly 30 2500</code>
+║
+║ <code>/pricehistory</code> - View price changes
+╚══════════════════════╝
+";
+    
+    return $msg;
+}
+
+// ===== GET ADMIN DASHBOARD =====
+function getAdminDashboard() {
+    global $usersDB, $statsDB, $keysDB, $logsDB;
+    
+    $users = json_decode(file_get_contents($usersDB), true);
+    $stats = json_decode(file_get_contents($statsDB), true);
+    $keys = json_decode(file_get_contents($keysDB), true);
+    $logs = json_decode(file_get_contents($logsDB), true);
+    
+    $totalUsers = count($users);
+    $premium = count(array_filter($users, fn($u) => $u['plan'] == 'premium'));
+    $banned = count(array_filter($users, fn($u) => $u['banned'] ?? false));
+    
+    $totalChecks = 0;
+    $totalLives = 0;
+    foreach ($stats as $day => $s) {
+        $totalChecks += $s['total'] ?? 0;
+        $totalLives += $s['lives'] ?? 0;
+    }
+    
+    $activeKeys = count(array_filter($keys, fn($k) => $k['active']));
+    $usedKeys = count(array_filter($keys, fn($k) => !$k['active']));
+    
+    $today = date('Y-m-d');
+    $todayChecks = $stats[$today]['total'] ?? 0;
+    $todayLives = $stats[$today]['lives'] ?? 0;
+    
+    $recentLogs = count(array_filter($logs, fn($l) => strtotime($l['time']) > time() - 86400));
+    
+    $msg = "
+╔══════════════════════╗
+║   「 👑 DASHBOARD 」  ║
+╠══════════════════════╣
+║ <b>Users:</b>
+║ • Total: $totalUsers
+║ • Premium: $premium
+║ • Banned: $banned
+╠══════════════════════╣
+║ <b>Stats:</b>
+║ • Today Checks: $todayChecks
+║ • Today Lives: $todayLives
+║ • Total Checks: $totalChecks
+║ • Total Lives: $totalLives
+╠══════════════════════╣
+║ <b>Keys:</b>
+║ • Active: $activeKeys
+║ • Used: $usedKeys
+╠══════════════════════╣
+║ <b>Logs (24h):</b> $recentLogs
+╚══════════════════════╝
+";
+    
+    return $msg;
+}
+
+// ===== GET LOGS MESSAGE =====
+function getLogsMessage($type = 'all') {
+    global $logsDB;
+    $logs = json_decode(file_get_contents($logsDB), true);
+    $logs = array_reverse($logs);
+    
+    $filtered = [];
+    foreach ($logs as $log) {
+        if ($type == 'all' || $log['type'] == $type) {
+            $filtered[] = $log;
+        }
+        if (count($filtered) >= 10) break;
+    }
+    
+    if (empty($filtered)) {
+        return "📭 No logs found";
+    }
+    
+    $msg = "╔══════════════════════╗\n";
+    $msg .= "║   「 📋 LOGS 」      ║\n";
+    $msg .= "╠══════════════════════╣\n";
+    
+    foreach ($filtered as $log) {
+        $typeIcon = match($log['type']) {
+            'register' => '👤',
+            'redeem' => '🎟️',
+            'key_gen' => '🔑',
+            'price_change' => '💰',
+            'ban' => '🔨',
+            'unban' => '🔓',
+            default => '📝'
+        };
+        $msg .= "$typeIcon [{$log['time']}]\n";
+        $msg .= "└ {$log['details']}\n\n";
+    }
+    $msg .= "╚══════════════════════╝";
+    
+    return $msg;
+}
+
+// ===== PARSE CARD =====
 function parseCard($text) {
     if (preg_match('/(\d{15,16})[\/\|\s:](\d{1,2})[\/\|\s:](\d{2,4})[\/\|\s:](\d{3,4})/', $text, $m)) {
         $cc = $m[1];
@@ -846,11 +621,6 @@ function parseCard($text) {
     return null;
 }
 
-function formatCard($card) {
-    $parts = explode('|', $card);
-    return substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
-}
-
 // ===== PYTHON GATE EXECUTOR =====
 function executePythonGate($script, $card) {
     $scriptPath = __DIR__ . '/' . $script;
@@ -862,164 +632,28 @@ function executePythonGate($script, $card) {
     $output = shell_exec($command);
     $result = json_decode($output, true);
     if (!$result || !isset($result['status'])) {
-        error_log("Python gate error: $output");
         return ['status' => 'DEAD', 'msg' => 'Gate execution error'];
     }
     return $result;
 }
 
 // ===== GATE FUNCTIONS =====
+function gateChk($card) { return executePythonGate('chk.py', $card); }
+function gateAu($card) { return executePythonGate('au.py', $card); }
+function gateVbv($card) { return executePythonGate('vbv.py', $card); }
+function gateSt($card) { return executePythonGate('st.py', $card); }
+function gatePp($card) { return executePythonGate('pp.py', $card); }
+function gatePv($card) { return executePythonGate('pv.py', $card); }
+function gateRz($card) { return executePythonGate('rz.py', $card); }
+function gateSh($card) { return executePythonGate('sh.py', $card); }
 
-function gateChk($card) {
-    $result = executePythonGate('chk.py', $card);
-    $result['time'] = rand(10, 30) / 10;
-    return $result;
-}
-
-function gateAu($card) {
-    $result = executePythonGate('au.py', $card);
-    $result['time'] = rand(10, 30) / 10;
-    return $result;
-}
-
-function gateVbv($card) {
-    $result = executePythonGate('vbv.py', $card);
-    $result['time'] = rand(5, 15) / 10;
-    return $result;
-}
-
-function gateSh($card) {
-    $result = executePythonGate('sh.py', $card);
-    $result['time'] = rand(15, 40) / 10;
-    return $result;
-}
-
-function gateSt($card) {
-    $result = executePythonGate('st.py', $card);
-    $result['time'] = rand(10, 25) / 10;
-    return $result;
-}
-
-function gatePp($card) {
-    $result = executePythonGate('pp.py', $card);
-    $result['time'] = rand(20, 40) / 10;
-    return $result;
-}
-
-function gatePv($card) {
-    $result = executePythonGate('pv.py', $card);
-    $result['time'] = rand(20, 40) / 10;
-    return $result;
-}
-
-function gateRz($card) {
-    $result = executePythonGate('rz.py', $card);
-    $result['time'] = rand(10, 25) / 10;
-    return $result;
-}
-
-function gateMsh($card) {
-    $result = executePythonGate('msh.py', $card);
-    $result['time'] = rand(30, 60) / 10;
-    return $result;
-}
-
-function gateMau($card) {
-    $result = executePythonGate('mau.py', $card);
-    $result['time'] = rand(30, 60) / 10;
-    return $result;
-}
-
-// ===== TOOL FUNCTIONS =====
-
-function toolBin($bin) {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://lookup.binlist.net/' . substr($bin, 0, 6));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept-Version: 3']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    $data = json_decode($response, true);
-    
-    return [
-        'bank' => $data['bank']['name'] ?? 'N/A',
-        'brand' => $data['scheme'] ?? 'N/A',
-        'type' => $data['type'] ?? 'N/A',
-        'level' => $data['brand'] ?? 'N/A',
-        'country' => $data['country']['name'] ?? 'N/A',
-        'emoji' => $data['country']['emoji'] ?? '🌍',
-        'currency' => $data['country']['currency'] ?? 'USD'
-    ];
-}
-
-function toolGen($input) {
-    $parts = explode(' ', $input);
-    $format = $parts[0];
-    $quantity = isset($parts[1]) ? min((int)$parts[1], 20) : 5;
-    
-    $formatParts = explode('|', $format);
-    if (count($formatParts) < 4) return null;
-    
-    $bin = $formatParts[0];
-    return smartGenerator($bin, $quantity);
-}
-
-function toolRand($country = 'us') {
-    $url = "https://randomuser.me/api/1.4/?nat=" . strtolower($country);
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    $result = curl_exec($ch);
-    curl_close($ch);
-    
-    $data = json_decode($result, true);
-    $user = $data['results'][0] ?? null;
-    
-    if (!$user) return null;
-    
-    $location = $user['location'];
-    $name = $user['name'];
-    
-    return [
-        'first' => $name['first'],
-        'last' => $name['last'],
-        'street' => $location['street']['number'] . ' ' . $location['street']['name'],
-        'city' => $location['city'],
-        'state' => $location['state'],
-        'postcode' => $location['postcode'],
-        'country' => $location['country'],
-        'phone' => $user['phone'],
-        'email' => $user['email']
-    ];
-}
-
-function toolSk($key) {
-    return checkStripeKey($key);
-}
-
-// ===== SAVE LIVE CARD =====
-
-function saveLive($card, $gate, $binfo, $userId) {
-    global $livesDB, $botName;
-    
-    $lives = json_decode(file_get_contents($livesDB), true);
-    $lives[] = [
-        'card' => substr($card, 0, 6) . 'XXXXXX' . substr($card, -4),
-        'gate' => $gate,
-        'bank' => $binfo['bank'] ?? 'N/A',
-        'country' => $binfo['country'] ?? 'Unknown',
-        'time' => date('Y-m-d H:i:s'),
-        'user' => $userId
-    ];
-    if (count($lives) > 100) array_shift($lives);
-    file_put_contents($livesDB, json_encode($lives, JSON_PRETTY_PRINT));
+// ===== FORMAT CARD =====
+function formatCard($card) {
+    $parts = explode('|', $card);
+    return substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
 }
 
 // ===== UPDATE STATS =====
-
 function updateStats($userId, $gate, $status) {
     global $statsDB, $usersDB;
     
@@ -1027,28 +661,13 @@ function updateStats($userId, $gate, $status) {
     $today = date('Y-m-d');
     
     if (!isset($stats[$today])) {
-        $stats[$today] = [
-            'total' => 0, 
-            'lives' => 0, 
-            'gates' => [], 
-            'users' => []
-        ];
+        $stats[$today] = ['total' => 0, 'lives' => 0, 'gates' => []];
     }
     
     $stats[$today]['total']++;
-    
+    if ($status == 'LIVE') $stats[$today]['lives']++;
     if (!isset($stats[$today]['gates'][$gate])) $stats[$today]['gates'][$gate] = 0;
     $stats[$today]['gates'][$gate]++;
-    
-    if ($status == 'LIVE') {
-        $stats[$today]['lives']++;
-    }
-    
-    if (!isset($stats[$today]['users'][$userId])) {
-        $stats[$today]['users'][$userId] = ['checks' => 0, 'lives' => 0];
-    }
-    $stats[$today]['users'][$userId]['checks']++;
-    if ($status == 'LIVE') $stats[$today]['users'][$userId]['lives']++;
     
     file_put_contents($statsDB, json_encode($stats, JSON_PRETTY_PRINT));
     
@@ -1060,401 +679,18 @@ function updateStats($userId, $gate, $status) {
     }
 }
 
-// ===== GET PUBLIC STATS =====
-
-function getPublicStats() {
-    global $statsDB, $livesDB, $usersDB, $botName;
-    
-    $stats = json_decode(file_get_contents($statsDB), true);
+// ===== SAVE LIVE =====
+function saveLive($card, $gate, $userId) {
+    global $livesDB;
     $lives = json_decode(file_get_contents($livesDB), true);
-    $users = json_decode(file_get_contents($usersDB), true);
-    
-    $today = date('Y-m-d');
-    $todayStats = $stats[$today] ?? ['total' => 0, 'lives' => 0];
-    
-    $totalChecks = 0;
-    $totalLives = 0;
-    foreach ($stats as $day => $s) {
-        $totalChecks += $s['total'] ?? 0;
-        $totalLives += $s['lives'] ?? 0;
-    }
-    
-    $recentLives = array_slice(array_reverse($lives), 0, 5);
-    
-    return gradientBox("BOT STATS", "
-📊 TODAY
-━━━━━━━━━━━━━━━━━━━━
-• Checks: {$todayStats['total']}
-• Lives: {$todayStats['lives']}
-• Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%
-
-📈 ALL TIME
-━━━━━━━━━━━━━━━━━━━━
-• Checks: $totalChecks
-• Lives: $totalLives
-• Users: " . count($users) . "
-
-✅ RECENT LIVES
-━━━━━━━━━━━━━━━━━━━━
-" . implode("\n", array_map(fn($l) => "💳 {$l['card']} - {$l['gate']}", $recentLives)) . "
-    ");
-}
-
-// ===== PROFILE CARD =====
-
-function getProfileCard($userId, $username, $firstname, $frame = 0) {
-    global $botName;
-    
-    $plan = getUserPlan($userId);
-    $rank = getUserRank($userId);
-    $counters = getLiveCounters();
-    $userData = getUserData($userId);
-    $animFrame = getAnimationFrame($frame);
-    
-    return gradientBox("$animFrame $botName", "
-👤 USER: @$username
-🏆 RANK: $rank
-💎 PLAN: $plan
-━━━━━━━━━━━━━━━━━━━━
-📊 YOUR STATS
-• Checks: " . number_format($userData['checks'] ?? 0) . "
-• Lives: " . number_format($userData['lives'] ?? 0) . "
-• Rate: " . getSuccessRate($userId) . "%
-━━━━━━━━━━━━━━━━━━━━
-🔥 LIVE STATS
-• Today: {$counters['today']} checks
-• This Hour: {$counters['hour']}
-• Per Minute: {$counters['minute']}
-━━━━━━━━━━━━━━━━━━━━
-📅 Joined: " . date('d M Y', ($userData['registered'] ?? time())) . "
-    ");
-}
-
-// ===== MAIN MENU BUTTONS =====
-function getMainMenuButtons() {
-    return [
-        [['text' => "💳 GATES", 'callback_data' => "menu_gates"]],
-        [['text' => "🛠️ TOOLS", 'callback_data' => "menu_tools"]],
-        [['text' => "💰 PURCHASE", 'callback_data' => "menu_purchase"]],
-        [['text' => "👑 ADMIN", 'callback_data' => "menu_admin"]],
-        [['text' => "📊 STATS", 'callback_data' => "menu_stats"]],
-        [['text' => "⭐ FAVORITES", 'callback_data' => "menu_fav"]]
+    $lives[] = [
+        'card' => substr($card, 0, 6) . 'XXXXXX' . substr($card, -4),
+        'gate' => $gate,
+        'time' => date('Y-m-d H:i:s'),
+        'user' => $userId
     ];
-}
-
-// ===== GATES MENU (CATEGORIZED) =====
-function getGatesCategoryButtons() {
-    return [
-        [['text' => "💳 AUTH GATES", 'callback_data' => "cat_auth"]],
-        [['text' => "💰 CHARGE GATES", 'callback_data' => "cat_charge"]],
-        [['text' => "🛍️ SHOPIFY GATES", 'callback_data' => "cat_shopify"]],
-        [['text' => "📦 MASS GATES", 'callback_data' => "cat_mass"]],
-        [['text' => "🏥 GATE HEALTH", 'callback_data' => "gate_health"]],
-        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-    ];
-}
-
-function getAuthGatesText() {
-    $stStats = getGateStats('st');
-    $auStats = getGateStats('au');
-    $chkStats = getGateStats('chk');
-    $vbvStats = getGateStats('vbv');
-    
-    return gradientBox("AUTH GATES", "
-💳 <code>/chk</code> - Braintree Auth
-   📊 Rate: {$chkStats['rate']}% | ⏱️ {$chkStats['avg_time']}s
-   
-💳 <code>/au</code> - Stripe Auth
-   📊 Rate: {$auStats['rate']}% | ⏱️ {$auStats['avg_time']}s
-   
-💳 <code>/vbv</code> - 3DS Lookup
-   📊 Rate: {$vbvStats['rate']}% | ⏱️ {$vbvStats['avg_time']}s
-    ");
-}
-
-function getChargeGatesText() {
-    $stStats = getGateStats('st');
-    $ppStats = getGateStats('pp');
-    $pvStats = getGateStats('pv');
-    $rzStats = getGateStats('rz');
-    
-    return gradientBox("CHARGE GATES", "
-💰 <code>/st</code> - Stripe 0.50$
-   📊 Rate: {$stStats['rate']}% | ⏱️ {$stStats['avg_time']}s
-   
-💰 <code>/pp</code> - PayPal 1$
-   📊 Rate: {$ppStats['rate']}% | ⏱️ {$ppStats['avg_time']}s
-   
-💰 <code>/pv</code> - PayPal 5$ CVV
-   📊 Rate: {$pvStats['rate']}% | ⏱️ {$pvStats['avg_time']}s
-   
-💰 <code>/rz</code> - Razorpay 1₹
-   📊 Rate: {$rzStats['rate']}% | ⏱️ {$rzStats['avg_time']}s
-    ");
-}
-
-function getShopifyGatesText() {
-    $shStats = getGateStats('sh');
-    $mshStats = getGateStats('msh');
-    
-    return gradientBox("SHOPIFY GATES", "
-🛍️ <code>/sh</code> - Shopify 0.98$
-   📊 Rate: {$shStats['rate']}% | ⏱️ {$shStats['avg_time']}s
-   
-🛍️ <code>/msh</code> - Mass Shopify
-   📊 Rate: {$mshStats['rate']}% | ⏱️ {$mshStats['avg_time']}s
-    ");
-}
-
-function getMassGatesText() {
-    $mshStats = getGateStats('msh');
-    $mauStats = getGateStats('mau');
-    
-    return gradientBox("MASS GATES", "
-📦 <code>/msh</code> - Mass Shopify
-   📊 Rate: {$mshStats['rate']}% | ⏱️ {$mshStats['avg_time']}s
-   🔥 Max: 5000 cards
-   
-📦 <code>/mau</code> - Mass Stripe Auth
-   📊 Rate: {$mauStats['rate']}% | ⏱️ {$mauStats['avg_time']}s
-   🔥 Max: 1500 cards
-    ");
-}
-
-function getGateHealthText() {
-    $health = getGateHealth();
-    
-    return gradientBox("GATE HEALTH", "
-" . implode("\n", array_map(fn($g) => "• $g", $health)) . "
-
-📊 <b>Recommended:</b>
-" . implode("\n", array_map(fn($g, $r) => "🥇 $g - {$r}%", array_keys(getRecommendedGates()), getRecommendedGates())) . "
-    ");
-}
-
-// ===== TOOLS MENU (IMPROVED) =====
-function getToolsMenuButtons() {
-    return [
-        [['text' => "🔍 BIN Lookup", 'callback_data' => "tool_bin"]],
-        [['text' => "🎴 CC Generator", 'callback_data' => "tool_gen"]],
-        [['text' => "📍 Address Gen", 'callback_data' => "tool_rand"]],
-        [['text' => "🔑 Key Checker", 'callback_data' => "tool_sk"]],
-        [['text' => "✅ Card Validator", 'callback_data' => "tool_valid"]],
-        [['text' => "📊 My History", 'callback_data' => "tool_history"]],
-        [['text' => "⭐ Favorites", 'callback_data' => "tool_fav"]],
-        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-    ];
-}
-
-function getBinStatsText() {
-    $stats = getBinStats();
-    
-    return gradientBox("BIN DATABASE", "
-📊 Total BINs: {$stats['total']}
-🆕 New today: {$stats['new_today']}
-⭐ Popular: {$stats['popular']}
-
-<i>Usage: /bin 400022</i>
-    ");
-}
-
-function getValidatorText($card = '') {
-    if (!$card) {
-        return gradientBox("CARD VALIDATOR", "
-<i>Send card to validate:</i>
-<code>/valid 4111111111111111|12|25|123</code>
-
-✅ Checks Luhn, expiry, CVV
-💳 Shows card type
-    ");
-    }
-    
-    $result = validateCard($card);
-    
-    return gradientBox("VALIDATION RESULT", "
-💳 Card: $card
-🔢 Type: {$result['type']}
-✅ Luhn: {$result['luhn']}
-📅 Expiry: {$result['expiry']}
-🔒 CVV: {$result['cvv']}
-━━━━━━━━━━━━━━━━━━━━
-📊 Overall: " . ($result['valid'] ? "✅ VALID" : "❌ INVALID") . "
-    ");
-}
-
-function getHistoryText($userId) {
-    $history = getUserHistory($userId, 5);
-    
-    if (empty($history)) {
-        return gradientBox("MY HISTORY", "
-📭 No history yet
-<i>Start checking cards!</i>
-        ");
-    }
-    
-    $lines = [];
-    foreach ($history as $h) {
-        $lines[] = "💳 {$h['card']} - {$h['gate']}";
-    }
-    
-    return gradientBox("RECENT HISTORY", "
-" . implode("\n", $lines) . "
-    ");
-}
-
-// ===== PURCHASE MENU =====
-function getPurchaseButtons() {
-    return [
-        [['text' => "⚡ DAILY - \$1", 'callback_data' => "buy_daily"]],
-        [['text' => "📅 WEEKLY - \$3", 'callback_data' => "buy_weekly"]],
-        [['text' => "🔥 MONTHLY - \$8", 'callback_data' => "buy_monthly"]],
-        [['text' => "💎 YEARLY - \$30", 'callback_data' => "buy_yearly"]],
-        [['text' => "🎟️ REDEEM KEY", 'callback_data' => "buy_redeem"]],
-        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-    ];
-}
-
-// ===== ADMIN MENU (IMPROVED) =====
-function getAdminMenuButtons() {
-    return [
-        [['text' => "📊 DASHBOARD", 'callback_data' => "admin_dash"]],
-        [['text' => "👥 USER MGMT", 'callback_data' => "admin_users"]],
-        [['text' => "🎮 GATE CTRL", 'callback_data' => "admin_gates"]],
-        [['text' => "📢 BROADCAST", 'callback_data' => "admin_broadcast"]],
-        [['text' => "🔑 KEY GEN", 'callback_data' => "admin_keys"]],
-        [['text' => "📋 LOGS", 'callback_data' => "admin_logs"]],
-        [['text' => "💾 BACKUP", 'callback_data' => "admin_backup"]],
-        [['text' => "🔨 BAN", 'callback_data' => "admin_ban"]],
-        [['text' => "📢 ANNOUNCE", 'callback_data' => "admin_announce"]],
-        [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-    ];
-}
-
-function getAdminDashboardText() {
-    return getAdminDashboard();
-}
-
-function getAdminUsersText() {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    $total = count($users);
-    $premium = count(array_filter($users, fn($u) => $u['plan'] == 'premium'));
-    $today = count(array_filter($users, fn($u) => date('Y-m-d', $u['registered']) == date('Y-m-d')));
-    
-    return gradientBox("USER MANAGEMENT", "
-👥 Total: $total
-⭐ Premium: $premium
-🆕 New today: $today
-
-Commands:
-• /users - List users
-• /user [id] - View user
-• /promote [id] - Make admin
-    ");
-}
-
-function getAdminGatesText() {
-    return gradientBox("GATE CONTROL", "
-Current Status:
-" . implode("\n", getGateHealth()) . "
-
-Commands:
-• /gateon [gate] - Enable gate
-• /gateoff [gate] - Disable gate
-• /gatestats - View all stats
-    ");
-}
-
-function getAdminBroadcastText() {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    
-    return gradientBox("BROADCAST", "
-👥 Total users: " . count($users) . "
-
-Usage:
-<code>/broadcast Your message</code>
-
-Options:
-• Reply to a message to forward it
-• Supports HTML formatting
-    ");
-}
-
-function getAdminKeysText() {
-    global $keysDB;
-    $keys = json_decode(file_get_contents($keysDB), true);
-    $active = count(array_filter($keys, fn($k) => $k['active']));
-    $used = count(array_filter($keys, fn($k) => !$k['active']));
-    
-    return gradientBox("KEY MANAGEMENT", "
-🔑 Active: $active
-❌ Used: $used
-
-Commands:
-• /genkey [plan] [days]
-• /keys - List keys
-• /delkey [key] - Delete key
-    ");
-}
-
-function getAdminLogsText() {
-    return gradientBox("SYSTEM LOGS", "
-Select log type:
-• 💚 Lives - Recent hits
-• ❌ Errors - System errors
-• 👥 Users - New users
-• 💰 Payments - Transactions
-    ");
-}
-
-function getAdminBackupText() {
-    return gradientBox("BACKUP SYSTEM", "
-📁 Database size: ~2.5 MB
-⏱️ Last backup: " . date('d M H:i', time() - 7200) . "
-
-Options:
-• Download users.json
-• Download keys.json
-• Full system backup
-    ");
-}
-
-function getAdminBanText() {
-    return gradientBox("BAN SYSTEM", "
-🚫 Banned users: 3
-
-Commands:
-• /ban [id] - Ban user
-• /unban [id] - Unban user
-• /banned - List banned
-    ");
-}
-
-function getAdminAnnounceText() {
-    return gradientBox("ANNOUNCEMENTS", "
-📢 Quick announcements:
-
-• New gate coming soon
-• Maintenance schedule
-• Giveaway events
-    ");
-}
-
-// ===== FAVORITES MENU =====
-function getFavoritesMenuButtons($userId) {
-    global $usersDB;
-    $users = json_decode(file_get_contents($usersDB), true);
-    $favorites = $users[$userId]['favorites'] ?? [];
-    
-    $buttons = [];
-    foreach ($favorites as $fav) {
-        $buttons[] = [['text' => $fav, 'callback_data' => "fav_" . str_replace('/', '', $fav)]];
-    }
-    $buttons[] = [['text' => "➕ Add Favorite", 'callback_data' => "fav_add"]];
-    $buttons[] = [['text' => "🔙 BACK", 'callback_data' => "main_menu"]];
-    
-    return $buttons;
+    if (count($lives) > 100) array_shift($lives);
+    file_put_contents($livesDB, json_encode($lives, JSON_PRETTY_PRINT));
 }
 
 // ===== HANDLE WEBHOOK =====
@@ -1471,335 +707,308 @@ if (isset($update['callback_query'])) {
     $username = $callback['from']['username'] ?? 'NoUsername';
     $firstname = $callback['from']['first_name'] ?? 'User';
     
-    // Answer callback query
+    // Answer callback
     file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id']);
     
-    // Register user if not exists
+    // Register if new
     if (!isRegistered($userId)) {
         registerUser($userId, $username, $firstname);
     }
     
-    switch ($data) {
-        case 'main_menu':
-            $profile = getProfileCard($userId, $username, $firstname);
-            
-            // Create channel buttons
-            $channelButtons = [];
-            foreach ($GLOBALS['channels'] as $channel) {
-                $channelButtons[] = [['text' => "📢 {$channel['name']}", 'url' => $channel['link']]];
-            }
-            
-            // Combine with main menu
-            $allButtons = array_merge($channelButtons, getMainMenuButtons());
-            
-            editMessage($chatId, $msgId, $profile, $allButtons);
-            break;
-            
-        case 'menu_gates':
-            editMessage($chatId, $msgId, "⚡ Select gate category:", getGatesCategoryButtons());
-            break;
-            
-        case 'cat_auth':
-            editMessage($chatId, $msgId, getAuthGatesText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_gates"]]
-            ]);
-            break;
-            
-        case 'cat_charge':
-            editMessage($chatId, $msgId, getChargeGatesText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_gates"]]
-            ]);
-            break;
-            
-        case 'cat_shopify':
-            editMessage($chatId, $msgId, getShopifyGatesText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_gates"]]
-            ]);
-            break;
-            
-        case 'cat_mass':
-            editMessage($chatId, $msgId, getMassGatesText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_gates"]]
-            ]);
-            break;
-            
-        case 'gate_health':
-            editMessage($chatId, $msgId, getGateHealthText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_gates"]]
-            ]);
-            break;
-            
-        case 'menu_tools':
-            editMessage($chatId, $msgId, "🛠️ Select tool:", getToolsMenuButtons());
-            break;
-            
-        case 'tool_bin':
-            $stats = getBinStatsText();
-            editMessage($chatId, $msgId, $stats, [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]]
-            ]);
-            break;
-            
-        case 'tool_gen':
-            editMessage($chatId, $msgId, "🎴 Send format:\n<code>/gen 400022|x|25|xxx 10</code>", [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]]
-            ]);
-            break;
-            
-        case 'tool_rand':
-            $countries = getCountryOptions();
-            $buttons = [];
-            foreach ($countries as $c) {
-                $buttons[] = [['text' => $c['text'], 'callback_data' => $c['callback']]];
-            }
-            $buttons[] = [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]];
-            editMessage($chatId, $msgId, "📍 Select country:", $buttons);
-            break;
-            
-        case 'addr_us':
-        case 'addr_uk':
-        case 'addr_ca':
-        case 'addr_au':
-        case 'addr_in':
-            $country = str_replace('addr_', '', $data);
-            $addr = toolRand($country);
-            if ($addr) {
-                $text = gradientBox("ADDRESS", "
-👤 Name: {$addr['first']} {$addr['last']}
-🏠 Street: {$addr['street']}
-🌆 City: {$addr['city']}
-📍 State: {$addr['state']}
-📮 Zip: {$addr['postcode']}
-🌍 Country: {$addr['country']}
-📞 Phone: {$addr['phone']}
-📧 Email: {$addr['email']}
-                ");
-            } else {
-                $text = "❌ Error generating address";
-            }
-            editMessage($chatId, $msgId, $text, [
-                [['text' => "🔙 BACK", 'callback_data' => "tool_rand"]]
-            ]);
-            break;
-            
-        case 'addr_more':
-            editMessage($chatId, $msgId, "More countries coming soon!", [
-                [['text' => "🔙 BACK", 'callback_data' => "tool_rand"]]
-            ]);
-            break;
-            
-        case 'tool_sk':
-            editMessage($chatId, $msgId, "🔑 Send Stripe key:\n<code>/sk sk_live_xxx</code>", [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]]
-            ]);
-            break;
-            
-        case 'tool_valid':
-            editMessage($chatId, $msgId, getValidatorText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]]
-            ]);
-            break;
-            
-        case 'tool_history':
-            editMessage($chatId, $msgId, getHistoryText($userId), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_tools"]]
-            ]);
-            break;
-            
-        case 'tool_fav':
-            editMessage($chatId, $msgId, "⭐ Your favorites:", getFavoritesMenuButtons($userId));
-            break;
-            
-        case 'menu_purchase':
-            editMessage($chatId, $msgId, gradientBox("PURCHASE", "
-💰 <b>Premium Plans:</b>
-━━━━━━━━━━━━━━━━━━━━
-⚡ DAILY   - \$1 (1 day)
-📅 WEEKLY  - \$3 (7 days)
-🔥 MONTHLY - \$8 (30 days)
-💎 YEARLY  - \$30 (365 days)
-
-🎁 <b>Features:</b>
-• All Premium Gates
-• Mass Checker
-• Priority Support
-• Higher Success Rate
-            "), getPurchaseButtons());
-            break;
-            
-        case 'buy_daily':
-        case 'buy_weekly':
-        case 'buy_monthly':
-        case 'buy_yearly':
-            $plans = [
-                'buy_daily' => 'Daily',
-                'buy_weekly' => 'Weekly',
-                'buy_monthly' => 'Monthly',
-                'buy_yearly' => 'Yearly'
-            ];
-            $plan = $plans[$data];
-            editMessage($chatId, $msgId, gradientBox("PURCHASE $plan", "
-To buy $plan plan:
-
-1. Send payment to:
-<code>USDT (BEP20)</code>
-<code>0x0a7961b6a421053e2f3e2d8deb8c25b65d0b8bf7</code>
-
-2. Contact @HELOBIY41
-3. Get your activation key
-
-Use /redeem to activate
-            "), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_purchase"]]
-            ]);
-            break;
-            
-        case 'buy_redeem':
-            editMessage($chatId, $msgId, "🎟️ Send your key:\n<code>/redeem XXXX-XXXX-XXXX-XXXX</code>", [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_purchase"]]
-            ]);
-            break;
-            
-        case 'menu_admin':
-            if (!isAdmin($userId)) {
-                file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=⛔ Admin Only!&show_alert=true");
-                break;
-            }
-            editMessage($chatId, $msgId, "👑 Admin Panel:", getAdminMenuButtons());
-            break;
-            
-        case 'admin_dash':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminDashboardText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-            ]);
-            break;
-            
-        case 'admin_users':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminUsersText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-            ]);
-            break;
-            
-        case 'admin_gates':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminGatesText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-            ]);
-            break;
-            
-        case 'admin_broadcast':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminBroadcastText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-            ]);
-            break;
-            
-        case 'admin_keys':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminKeysText(), [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-            ]);
-            break;
-            
-        case 'admin_logs':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminLogsText(), getLogCategories());
-            break;
-            
-        case 'log_lives':
-        case 'log_errors':
-        case 'log_users':
-        case 'log_payments':
-            if (!isAdmin($userId)) break;
-            $logTypes = [
-                'log_lives' => '💚 Recent Lives',
-                'log_errors' => '❌ Error Logs',
-                'log_users' => '👥 User Activity',
-                'log_payments' => '💰 Payment Logs'
-            ];
-            $type = $logTypes[$data];
-            editMessage($chatId, $msgId, gradientBox($type, "
-📋 Log viewer coming soon!
-Check back later.
-            "), [
-                [['text' => "🔙 BACK", 'callback_data' => "admin_logs"]]
-            ]);
-            break;
-            
-        case 'admin_backup':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminBackupText(), getBackupOptions());
-            break;
-            
-        case 'backup_db':
-        case 'backup_users':
-        case 'backup_keys':
-        case 'backup_restore':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, gradientBox("BACKUP", "
-⚠️ Feature in development
-Coming soon!
-            "), [
-                [['text' => "🔙 BACK", 'callback_data' => "admin_backup"]]
-            ]);
-            break;
-            
-        case 'admin_ban':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminBanText(), getBanOptions());
-            break;
-            
-        case 'ban_user':
-        case 'unban_user':
-        case 'ban_list':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, gradientBox("BAN SYSTEM", "
-⚠️ Feature in development
-Coming soon!
-            "), [
-                [['text' => "🔙 BACK", 'callback_data' => "admin_ban"]]
-            ]);
-            break;
-            
-        case 'admin_announce':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, getAdminAnnounceText(), getAnnouncementOptions());
-            break;
-            
-        case 'ann_gate':
-        case 'ann_maintenance':
-        case 'ann_giveaway':
-            if (!isAdmin($userId)) break;
-            editMessage($chatId, $msgId, gradientBox("ANNOUNCEMENT", "
-To send announcement:
-
-<code>/broadcast Your message</code>
-
-Include HTML formatting if needed.
-            "), [
-                [['text' => "🔙 BACK", 'callback_data' => "admin_announce"]]
-            ]);
-            break;
-            
-        case 'menu_stats':
-            editMessage($chatId, $msgId, getPublicStats(), [
-                [['text' => "🔄 REFRESH", 'callback_data' => "menu_stats"]],
-                [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-            ]);
-            break;
-            
-        case 'menu_fav':
-            editMessage($chatId, $msgId, "⭐ Favorites:", getFavoritesMenuButtons($userId));
-            break;
-            
-        case 'fav_add':
-            editMessage($chatId, $msgId, "To add favorite, use a gate command first then:\n<code>/fav</code>", [
-                [['text' => "🔙 BACK", 'callback_data' => "menu_fav"]]
-            ]);
-            break;
+    // Check ban
+    if (isBanned($userId) && $data != 'main_menu') {
+        file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=⛔ You are banned!&show_alert=true");
+        exit;
     }
+    
+    // Handle verify
+    if ($data == 'verify') {
+        $users = json_decode(file_get_contents($usersDB), true);
+        $joined = checkChannelJoin($userId);
+        
+        if ($joined) {
+            $users[$userId]['verified'] = true;
+            file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
+            
+            $msg = getWelcomeMessage($userId, $username, $firstname);
+            
+            // Send new message with main menu
+            sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $msg, getMainMenuButtons());
+            
+            // Delete old message
+            file_get_contents($website . "/deleteMessage?chat_id=$chatId&message_id=$msgId");
+        } else {
+            file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=❌ You haven't joined all channels!&show_alert=true");
+        }
+        exit;
+    }
+    
+    // Handle main menu
+    if ($data == 'main_menu') {
+        $msg = getWelcomeMessage($userId, $username, $firstname);
+        editMessage($chatId, $msgId, $msg, getMainMenuButtons());
+        exit;
+    }
+    
+    // Handle gates menu
+    if ($data == 'menu_gates') {
+        $text = "
+╔══════════════════════╗
+║    「 💳 GATES 」     ║
+╠══════════════════════╣
+║ <b>FREE GATES</b> (10s limit)
+║ ━━━━━━━━━━━━━━━━━━━━
+║ <code>/chk</code> - Braintree Auth
+║ <code>/au</code> - Stripe Auth
+║ <code>/vbv</code> - 3DS Lookup
+╠══════════════════════╣
+║ <b>PREMIUM GATES</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ <code>/st</code> - Stripe 0.50$
+║ <code>/pp</code> - PayPal 1$
+║ <code>/pv</code> - PayPal 5$ CVV
+║ <code>/rz</code> - Razorpay 1₹
+║ <code>/sh</code> - Shopify 0.98$
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+        ]);
+        exit;
+    }
+    
+    // Handle tools menu
+    if ($data == 'menu_tools') {
+        $text = "
+╔══════════════════════╗
+║    「 🛠️ TOOLS 」     ║
+╠══════════════════════╣
+║ <code>/bin</code> - BIN Lookup
+║ <code>/gen</code> - CC Generator
+║ <code>/rand</code> - Address Gen
+║ <code>/sk</code> - Key Checker
+║ <code>/lives</code> - Recent Lives
+║ <code>/stats</code> - Bot Stats
+║ <code>/credits</code> - My Profile
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+        ]);
+        exit;
+    }
+    
+    // Handle pricing menu
+    if ($data == 'menu_pricing') {
+        editMessage($chatId, $msgId, getPricingMessage(), getPricingButtons());
+        exit;
+    }
+    
+    // Handle price details
+    if (strpos($data, 'price_') === 0) {
+        $plan = str_replace('price_', '', $data);
+        $price = getPrice($plan);
+        $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
+        
+        $text = "
+╔══════════════════════╗
+║   「 {$planNames[$plan]} 」    ║
+╠══════════════════════╣
+║ <b>Price:</b>
+║ • USD: \${$price['usd']}
+║ • INR: ₹{$price['inr']}
+╠══════════════════════╣
+║ <b>Duration:</b>
+║ • " . match($plan) {
+            'daily' => '1 Day',
+            'weekly' => '7 Days',
+            'monthly' => '30 Days',
+            'yearly' => '365 Days'
+        } . "
+╠══════════════════════╣
+║ Contact @HELOBIY41 to buy
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "menu_pricing"]]
+        ]);
+        exit;
+    }
+    
+    // Handle redeem
+    if ($data == 'buy_redeem') {
+        editMessage($chatId, $msgId, "🎟️ Send your key:\n<code>/redeem XXXX-XXXX-XXXX-XXXX</code>", [
+            [['text' => "🔙 BACK", 'callback_data' => "menu_pricing"]]
+        ]);
+        exit;
+    }
+    
+    // Handle admin menu
+    if ($data == 'menu_admin') {
+        if (!isAdmin($userId)) {
+            file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=⛔ Admin Only!&show_alert=true");
+            exit;
+        }
+        editMessage($chatId, $msgId, "👑 Admin Panel:", getAdminMenuButtons());
+        exit;
+    }
+    
+    // Admin dashboard
+    if ($data == 'admin_dash') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getAdminDashboard(), [
+            [['text' => "🔄 Refresh", 'callback_data' => "admin_dash"]],
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
+    // Admin users
+    if ($data == 'admin_users') {
+        if (!isAdmin($userId)) exit;
+        $users = json_decode(file_get_contents($usersDB), true);
+        $total = count($users);
+        $premium = count(array_filter($users, fn($u) => $u['plan'] == 'premium'));
+        $banned = count(array_filter($users, fn($u) => $u['banned'] ?? false));
+        
+        $text = "
+╔══════════════════════╗
+║   「 👥 USER MGMT 」  ║
+╠══════════════════════╣
+║ Total: $total
+║ Premium: $premium
+║ Banned: $banned
+╠══════════════════════╣
+║ <b>Commands:</b>
+║ <code>/users</code> - List users
+║ <code>/user [id]</code> - View user
+║ <code>/ban [id]</code> - Ban user
+║ <code>/unban [id]</code> - Unban user
+║ <code>/promote [id]</code> - Make admin
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
+    // Admin prices menu
+    if ($data == 'admin_prices') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getAdminPriceMessage(), getAdminPriceButtons());
+        exit;
+    }
+    
+    // Admin price edit options
+    if (strpos($data, 'admin_price_') === 0) {
+        if (!isAdmin($userId)) exit;
+        $plan = str_replace('admin_price_', '', $data);
+        $current = getPrice($plan);
+        $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
+        
+        $text = "
+╔══════════════════════╗
+║   「 Edit {$planNames[$plan]} 」  ║
+╠══════════════════════╣
+║ Current:
+║ USD: \${$current['usd']}
+║ INR: ₹{$current['inr']}
+╠══════════════════════╣
+║ <b>To change:</b>
+║ <code>/setprice $plan [usd] [inr]</code>
+║
+║ Example:
+║ <code>/setprice $plan 2 160</code>
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
+        ]);
+        exit;
+    }
+    
+    // Admin view prices
+    if ($data == 'admin_view_prices') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getAdminPriceMessage(), [
+            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
+        ]);
+        exit;
+    }
+    
+    // Admin price logs
+    if ($data == 'admin_price_logs') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getLogsMessage('price_change'), [
+            [['text' => "🔄 Refresh", 'callback_data' => "admin_price_logs"]],
+            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
+        ]);
+        exit;
+    }
+    
+    // Admin keys
+    if ($data == 'admin_keys') {
+        if (!isAdmin($userId)) exit;
+        $keys = json_decode(file_get_contents($keysDB), true);
+        $active = count(array_filter($keys, fn($k) => $k['active']));
+        $used = count(array_filter($keys, fn($k) => !$k['active']));
+        
+        $text = "
+╔══════════════════════╗
+║   「 🔑 KEY MGMT 」   ║
+╠══════════════════════╣
+║ Active: $active
+║ Used: $used
+╠══════════════════════╣
+║ <b>Commands:</b>
+║ <code>/genkey daily 1</code>
+║ <code>/genkey weekly 7</code>
+║ <code>/genkey monthly 30</code>
+║ <code>/genkey yearly 365</code>
+║ <code>/keys</code> - List all keys
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
+    // Admin broadcast
+    if ($data == 'admin_broadcast') {
+        if (!isAdmin($userId)) exit;
+        $users = json_decode(file_get_contents($usersDB), true);
+        
+        $text = "
+╔══════════════════════╗
+║   「 📢 BROADCAST 」  ║
+╠══════════════════════╣
+║ Total users: " . count($users) . "
+╠══════════════════════╣
+║ <b>Usage:</b>
+║ <code>/broadcast Your message</code>
+║
+║ <b>Example:</b>
+║ <code>/broadcast New gate added!</code>
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
+    // Admin logs
+    if ($data == 'admin_logs') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getLogsMessage(), [
+            [['text' => "🔄 Refresh", 'callback_data' => "admin_logs"]],
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
     exit;
 }
 
@@ -1813,9 +1022,22 @@ $firstname = $update['message']['from']['first_name'] ?? 'User';
 
 if (!$chatId || !$userId) exit;
 
-// Register user if new
+// Check ban
+if (isBanned($userId)) {
+    sendMessage($chatId, "⛔ You are banned from using this bot.", $msgId);
+    exit;
+}
+
+// Register if new
 if (!isRegistered($userId)) {
     registerUser($userId, $username, $firstname);
+}
+
+// Check if verified
+if (!isVerified($userId)) {
+    $welcomeMsg = getWelcomeMessage($userId, $username, $firstname);
+    sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $welcomeMsg, getVerifyButtons());
+    exit;
 }
 
 $cmd = explode(' ', $message)[0];
@@ -1825,269 +1047,132 @@ $args = trim(substr($message, strlen($cmd)));
 switch ($cmd) {
     
     case '/start':
-        // Show animation frames
-        $profile = getProfileCard($userId, $username, $firstname, 0);
-        
-        // Create channel buttons
-        $channelButtons = [];
-        foreach ($channels as $channel) {
-            $channelButtons[] = [['text' => "📢 {$channel['name']}", 'url' => $channel['link']]];
-        }
-        
-        // Combine with main menu
-        $allButtons = array_merge($channelButtons, getMainMenuButtons());
-        
-        sendPhoto($chatId, "https://i.imgur.com/welcome-banner.jpg", $profile, $allButtons);
+        $welcomeMsg = getWelcomeMessage($userId, $username, $firstname);
+        sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $welcomeMsg, getMainMenuButtons());
         break;
     
+    // FREE GATES (with rate limit)
     case '/chk':
     case '/au':
     case '/vbv':
-    case '/sh':
-    case '/st':
-    case '/pp':
-    case '/pv':
-    case '/rz':
-        $card = parseCard($args);
+        // Check rate limit
+        $rateLimit = checkRateLimit($userId);
+        if ($rateLimit !== true) {
+            sendMessage($chatId, "⏳ Please wait $rateLimit seconds before using this gate again.", $msgId);
+            break;
+        }
         
+        $card = parseCard($args);
         if (!$card && $update['message']['reply_to_message']) {
             $card = parseCard($update['message']['reply_to_message']['text']);
         }
         
         if (!$card) {
-            $gateName = strtoupper(substr($cmd, 1));
             sendMessage($chatId, "❌ Use: $cmd 4111111111111111|12|25|123", $msgId);
             break;
         }
         
+        updateLastCheck($userId);
+        
         $gateMap = [
             '/chk' => 'gateChk',
             '/au' => 'gateAu',
-            '/vbv' => 'gateVbv',
-            '/sh' => 'gateSh',
-            '/st' => 'gateSt',
-            '/pp' => 'gatePp',
-            '/pv' => 'gatePv',
-            '/rz' => 'gateRz'
+            '/vbv' => 'gateVbv'
         ];
         
         $gateName = strtoupper(substr($cmd, 1));
         $gateFunc = $gateMap[$cmd];
         
-        // Animated processing with frames
-        $frames = ['◐', '◓', '◑', '◒'];
-        $waitMsg = sendMessage($chatId, gradientBox("PROCESSING", "
-{$frames[0]} Checking card...
-💳 " . formatCard($card['full']) . "
-⏱️ Please wait...
-        "));
-        
-        // Show animation
-        for ($i = 1; $i < 4; $i++) {
-            sleep(1);
-            editMessage($chatId, $waitMsg, gradientBox("PROCESSING", "
-{$frames[$i]} Checking card...
-💳 " . formatCard($card['full']) . "
-⏱️ Please wait...
-            "));
-        }
+        $waitMsg = sendMessage($chatId, "⏳ Processing...");
         
         $result = $gateFunc($card['full']);
         
         updateStats($userId, $gateName, $result['status']);
-        saveLastCard($userId, $card['full']);
         
         if ($result['status'] == 'LIVE') {
-            saveLive($card['full'], $gateName, ['bank' => 'N/A', 'country' => 'Unknown'], $userId);
+            saveLive($card['full'], $gateName, $userId);
         }
         
-        $statusIcon = $result['status'] == 'LIVE' ? '🟢' : '🔴';
-        $statusText = $result['status'] == 'LIVE' ? 'LIVE' : 'DEAD';
-        
+        $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
         $formattedCard = formatCard($card['full']);
-        $planBadge = getUserPlan($userId);
-        $rank = getUserRank($userId);
-        $gateStats = getGateStats(strtolower($gateName));
         
-        $text = gradientBox("$gateName RESULT", "
-💳 Card: <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>
-📊 Status: $statusText $statusIcon
-📝 Response: {$result['msg']}
-⏱️ Time: {$result['time']}s
-━━━━━━━━━━━━━━━━━━━━
-🏦 Info: {$result['binfo']['brand']} - {$result['binfo']['type']}
-🌍 Country: {$result['binfo']['country']} {$result['binfo']['emoji']}
-━━━━━━━━━━━━━━━━━━━━
-👤 User: @$username
-💎 Plan: $planBadge
-🏆 Rank: $rank
-📊 Gate Rate: {$gateStats['rate']}%
-        ");
+        $text = "
+╔══════════════════════╗
+║   「 $gateName 」   ║
+╠══════════════════════╣
+║ 💳 Card: <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>
+║ 📊 Status: {$result['status']} $statusIcon
+║ 📝 Response: {$result['msg']}
+╚══════════════════════╝
+";
         
         editMessage($chatId, $waitMsg, $text);
         break;
     
-    case '/msh':
-    case '/mau':
-        sendMessage($chatId, gradientBox("MASS CHECK", "
-📦 Send cards file or text:
-
-<code>$cmd</code> followed by cards
-or reply to a .txt file
-
-Max cards: " . ($cmd == '/msh' ? '5000' : '1500') . "
-        "), $msgId);
-        break;
-    
-    case '/bin':
-        $bin = trim($args);
-        if (!$bin || strlen($bin) < 6) {
-            sendMessage($chatId, "❌ Use: /bin 400022", $msgId);
+    // PREMIUM GATES (no rate limit)
+    case '/st':
+    case '/pp':
+    case '/pv':
+    case '/rz':
+    case '/sh':
+        if (!isPremium($userId) && !isAdmin($userId)) {
+            sendMessage($chatId, "❌ This gate requires premium membership!\n\nCheck pricing: /pricing", $msgId);
             break;
         }
         
-        $info = toolBin($bin);
-        $stats = getBinStats();
+        $card = parseCard($args);
+        if (!$card && $update['message']['reply_to_message']) {
+            $card = parseCard($update['message']['reply_to_message']['text']);
+        }
         
-        $text = gradientBox("BIN LOOKUP", "
-🔍 BIN: <code>$bin</code>
-💳 Brand: {$info['brand']}
-🏦 Bank: {$info['bank']}
-🌍 Country: {$info['country']} {$info['emoji']}
-💰 Currency: {$info['currency']}
-━━━━━━━━━━━━━━━━━━━━
-📊 DB Stats:
-• Total: {$stats['total']}
-• New today: {$stats['new_today']}
-        ");
-        
-        sendMessage($chatId, $text, $msgId);
-        break;
-    
-    case '/gen':
-        if (!$args) {
-            sendMessage($chatId, "❌ Use: /gen 400022|x|25|xxx 10", $msgId);
+        if (!$card) {
+            sendMessage($chatId, "❌ Use: $cmd 4111111111111111|12|25|123", $msgId);
             break;
         }
         
-        $cards = toolGen($args);
-        if (!$cards) {
-            sendMessage($chatId, "❌ Invalid format! Use: BIN|MM|YY|CVV", $msgId);
-            break;
+        $gateMap = [
+            '/st' => 'gateSt',
+            '/pp' => 'gatePp',
+            '/pv' => 'gatePv',
+            '/rz' => 'gateRz',
+            '/sh' => 'gateSh'
+        ];
+        
+        $gateName = strtoupper(substr($cmd, 1));
+        $gateFunc = $gateMap[$cmd];
+        
+        $waitMsg = sendMessage($chatId, "⏳ Processing...");
+        
+        $result = $gateFunc($card['full']);
+        
+        updateStats($userId, $gateName, $result['status']);
+        
+        if ($result['status'] == 'LIVE') {
+            saveLive($card['full'], $gateName, $userId);
         }
         
-        $format = explode(' ', $args)[0];
-        $qty = count($cards);
+        $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
+        $formattedCard = formatCard($card['full']);
         
-        $text = gradientBox("GENERATOR", "
-🎴 Generated: $qty cards
-📝 Format: $format
-━━━━━━━━━━━━━━━━━━━━
-" . implode("\n", array_map(fn($c) => "<code>$c</code>", array_slice($cards, 0, 10))) . "
-" . ($qty > 10 ? "\n<i>... and " . ($qty - 10) . " more</i>" : "") . "
-        ");
-        
-        sendMessage($chatId, $text, $msgId);
-        break;
-    
-    case '/valid':
-        if (!$args) {
-            sendMessage($chatId, getValidatorText(), $msgId);
-            break;
-        }
-        
-        sendMessage($chatId, getValidatorText($args), $msgId);
-        break;
-    
-    case '/rand':
-        $country = $args ?: 'us';
-        $address = toolRand($country);
-        
-        if (!$address) {
-            sendMessage($chatId, "❌ Invalid country code", $msgId);
-            break;
-        }
-        
-        $text = gradientBox("ADDRESS", "
-👤 Name: {$address['first']} {$address['last']}
-🏠 Street: {$address['street']}
-🌆 City: {$address['city']}
-📍 State: {$address['state']}
-📮 Zip: {$address['postcode']}
-🌍 Country: {$address['country']}
-📞 Phone: {$address['phone']}
-📧 Email: {$address['email']}
-        ");
-        
-        sendMessage($chatId, $text, $msgId);
-        break;
-    
-    case '/sk':
-        $key = trim($args);
-        if (!$key) {
-            sendMessage($chatId, "❌ Use: /sk sk_live_xxx", $msgId);
-            break;
-        }
-        
-        $waitMsg = sendMessage($chatId, gradientBox("KEY CHECK", "
-⏳ Checking Stripe Key...
-        "));
-        
-        $result = toolSk($key);
-        
-        $text = gradientBox("KEY CHECK", "
-🔑 Key: <code>$key</code>
-📊 Result: $result
-        ");
+        $text = "
+╔══════════════════════╗
+║   「 $gateName 」   ║
+╠══════════════════════╣
+║ 💳 Card: <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>
+║ 📊 Status: {$result['status']} $statusIcon
+║ 📝 Response: {$result['msg']}
+╚══════════════════════╝
+";
         
         editMessage($chatId, $waitMsg, $text);
         break;
     
-    case '/lives':
-        $lives = json_decode(file_get_contents($livesDB), true);
-        $lives = array_reverse($lives);
-        
-        if (empty($lives)) {
-            sendMessage($chatId, gradientBox("LIVES", "
-📭 No live cards yet
-            "), $msgId);
-            break;
-        }
-        
-        $text = gradientBox("RECENT LIVES", "
-" . implode("\n", array_map(function($l) {
-    return "💳 <code>{$l['card']}</code>\n└ {$l['gate']} - {$l['bank']}\n└ {$l['time']}";
-}, array_slice($lives, 0, 10))) . "
-        ");
-        
-        sendMessage($chatId, $text, $msgId);
+    // PRICING COMMAND
+    case '/pricing':
+        sendMessage($chatId, getPricingMessage(), $msgId, getPricingButtons());
         break;
     
-    case '/stats':
-        sendMessage($chatId, getPublicStats(), $msgId);
-        break;
-    
-    case '/credits':
-        $userData = getUserData($userId);
-        $plan = getUserPlan($userId);
-        $rank = getUserRank($userId);
-        
-        $text = gradientBox("MY PROFILE", "
-👤 User: @$username
-🆔 ID: <code>$userId</code>
-💎 Plan: $plan
-🏆 Rank: $rank
-━━━━━━━━━━━━━━━━━━━━
-📊 Checks: " . ($userData['checks'] ?? 0) . "
-✅ Lives: " . ($userData['lives'] ?? 0) . "
-📈 Rate: " . getSuccessRate($userId) . "%
-━━━━━━━━━━━━━━━━━━━━
-📅 Joined: " . date('d M Y', ($userData['registered'] ?? time())) . "
-        ");
-        
-        sendMessage($chatId, $text, $msgId);
-        break;
-    
+    // REDEEM COMMAND
     case '/redeem':
         $key = trim($args);
         if (!$key) {
@@ -2096,9 +1181,92 @@ Max cards: " . ($cmd == '/msh' ? '5000' : '1500') . "
         }
         
         $result = redeemKey($userId, $key);
-        sendMessage($chatId, gradientBox("REDEEM", $result['msg']), $msgId);
+        sendMessage($chatId, $result['msg'], $msgId);
         break;
     
+    // ADMIN PRICE UPDATE COMMAND
+    case '/setprice':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        
+        $parts = explode(' ', $args);
+        if (count($parts) < 3) {
+            sendMessage($chatId, "❌ Use: /setprice [plan] [usd] [inr]\n\nExample: /setprice daily 1 80", $msgId);
+            break;
+        }
+        
+        $plan = $parts[0];
+        $usd = (float)$parts[1];
+        $inr = (float)$parts[2];
+        
+        if (!in_array($plan, ['daily', 'weekly', 'monthly', 'yearly'])) {
+            sendMessage($chatId, "❌ Invalid plan! Use: daily, weekly, monthly, yearly", $msgId);
+            break;
+        }
+        
+        if ($usd <= 0 || $inr <= 0) {
+            sendMessage($chatId, "❌ Prices must be greater than 0!", $msgId);
+            break;
+        }
+        
+        updatePrice($plan, $usd, $inr, $userId);
+        
+        $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
+        sendMessage($chatId, "✅ {$planNames[$plan]} price updated!\nUSD: \$$usd\nINR: ₹$inr", $msgId);
+        break;
+    
+    // ADMIN PRICE HISTORY
+    case '/pricehistory':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        sendMessage($chatId, getLogsMessage('price_change'), $msgId);
+        break;
+    
+    // ADMIN BAN COMMAND
+    case '/ban':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        
+        if (!$args) {
+            sendMessage($chatId, "❌ Use: /ban [user_id]", $msgId);
+            break;
+        }
+        
+        $targetId = (int)$args;
+        if (banUser($targetId)) {
+            sendMessage($chatId, "✅ User $targetId has been banned.", $msgId);
+        } else {
+            sendMessage($chatId, "❌ User not found!", $msgId);
+        }
+        break;
+    
+    // ADMIN UNBAN COMMAND
+    case '/unban':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        
+        if (!$args) {
+            sendMessage($chatId, "❌ Use: /unban [user_id]", $msgId);
+            break;
+        }
+        
+        $targetId = (int)$args;
+        if (unbanUser($targetId)) {
+            sendMessage($chatId, "✅ User $targetId has been unbanned.", $msgId);
+        } else {
+            sendMessage($chatId, "❌ User not found!", $msgId);
+        }
+        break;
+    
+    // ADMIN KEY GENERATION
     case '/genkey':
         if (!isAdmin($userId)) {
             sendMessage($chatId, "❌ Admin only!", $msgId);
@@ -2107,7 +1275,7 @@ Max cards: " . ($cmd == '/msh' ? '5000' : '1500') . "
         
         $parts = explode(' ', $args);
         if (count($parts) < 2) {
-            sendMessage($chatId, "❌ Use: /genkey [plan] [days]", $msgId);
+            sendMessage($chatId, "❌ Use: /genkey [plan] [days]\n\nExample: /genkey monthly 30", $msgId);
             break;
         }
         
@@ -2115,25 +1283,30 @@ Max cards: " . ($cmd == '/msh' ? '5000' : '1500') . "
         $days = (int)$parts[1];
         
         if (!in_array($plan, ['daily', 'weekly', 'monthly', 'yearly'])) {
-            sendMessage($chatId, "❌ Invalid plan!", $msgId);
+            sendMessage($chatId, "❌ Invalid plan! Use: daily, weekly, monthly, yearly", $msgId);
             break;
         }
         
         $key = generateKey($plan, $days);
         $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
         
-        $text = gradientBox("KEY GENERATED", "
-🔑 Key: <code>$key</code>
-📊 Plan: {$planNames[$plan]}
-⏱️ Days: $days
-━━━━━━━━━━━━━━━━━━━━
-User can redeem with:
-<code>/redeem $key</code>
-        ");
+        $text = "
+╔══════════════════════╗
+║   「 KEY GENERATED 」 ║
+╠══════════════════════╣
+║ 🔑 Key: <code>$key</code>
+║ 📊 Plan: {$planNames[$plan]}
+║ ⏱️ Days: $days
+╠══════════════════════╣
+║ User can redeem with:
+║ <code>/redeem $key</code>
+╚══════════════════════╝
+";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
+    // ADMIN LIST KEYS
     case '/keys':
         if (!isAdmin($userId)) {
             sendMessage($chatId, "❌ Admin only!", $msgId);
@@ -2144,14 +1317,19 @@ User can redeem with:
         $active = array_filter($keys, fn($k) => $k['active']);
         $used = array_filter($keys, fn($k) => !$k['active']);
         
-        $text = gradientBox("KEYS", "
-✅ Active: " . count($active) . "
-❌ Used: " . count($used) . "
-        ");
+        $text = "
+╔══════════════════════╗
+║   「 KEYS LIST 」     ║
+╠══════════════════════╣
+║ ✅ Active: " . count($active) . "
+║ ❌ Used: " . count($used) . "
+╚══════════════════════╝
+";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
+    // ADMIN LIST USERS
     case '/users':
         if (!isAdmin($userId)) {
             sendMessage($chatId, "❌ Admin only!", $msgId);
@@ -2159,15 +1337,20 @@ User can redeem with:
         }
         
         $users = json_decode(file_get_contents($usersDB), true);
-        $text = gradientBox("USERS", "
-👥 Total Users: " . count($users) . "
-⭐ Premium: " . count(array_filter($users, fn($u) => $u['plan'] == 'premium')) . "
-🆕 New Today: " . count(array_filter($users, fn($u) => date('Y-m-d', $u['registered']) == date('Y-m-d'))) . "
-        ");
+        $text = "
+╔══════════════════════╗
+║   「 USERS LIST 」    ║
+╠══════════════════════╣
+║ Total: " . count($users) . "
+║ Premium: " . count(array_filter($users, fn($u) => $u['plan'] == 'premium')) . "
+║ Banned: " . count(array_filter($users, fn($u) => $u['banned'] ?? false)) . "
+╚══════════════════════╝
+";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
+    // ADMIN BROADCAST
     case '/broadcast':
         if (!isAdmin($userId)) {
             sendMessage($chatId, "❌ Admin only!", $msgId);
@@ -2182,42 +1365,276 @@ User can redeem with:
         
         $users = json_decode(file_get_contents($usersDB), true);
         $sent = 0;
-        $total = count($users);
         
-        $progressMsg = sendMessage($chatId, gradientBox("BROADCAST", "
-👥 Total: $total
-📨 Sent: 0
-📊 Progress: 0%
-        "));
+        $progressMsg = sendMessage($chatId, "📢 Broadcasting to " . count($users) . " users...");
         
         foreach ($users as $uid => $u) {
+            if ($u['banned'] ?? false) continue;
             sendMessage($uid, "『 BROADCAST 』\n━━━━━━━━━━━━━━━━━━━━━━━\n$msg\n━━━━━━━━━━━━━━━━━━━━━━━");
             $sent++;
             
-            if ($sent % 10 == 0 || $sent == $total) {
-                editMessage($chatId, $progressMsg, gradientBox("BROADCAST", "
-👥 Total: $total
-📨 Sent: $sent
-📊 Progress: " . round(($sent/$total)*100, 1) . "%
-                "));
+            if ($sent % 10 == 0) {
+                editMessage($chatId, $progressMsg, "📢 Sent: $sent/" . count($users));
             }
             usleep(100000);
         }
         
-        editMessage($chatId, $progressMsg, gradientBox("BROADCAST", "
-✅ Completed!
-👥 Total: $total
-📨 Sent: $sent
-        "));
+        editMessage($chatId, $progressMsg, "✅ Broadcast completed!\nSent to $sent users");
+        addLog('broadcast', $userId, "Broadcast sent to $sent users");
+        break;
+    
+    // TOOLS
+    case '/bin':
+        $bin = trim($args);
+        if (!$bin || strlen($bin) < 6) {
+            sendMessage($chatId, "❌ Use: /bin 400022", $msgId);
+            break;
+        }
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://lookup.binlist.net/' . substr($bin, 0, 6));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept-Version: 3']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($response, true);
+        
+        $text = "
+╔══════════════════════╗
+║    「 BIN LOOKUP 」   ║
+╠══════════════════════╣
+║ 🔍 BIN: <code>$bin</code>
+║ 💳 Brand: " . ($data['scheme'] ?? 'N/A') . "
+║ 🏦 Bank: " . ($data['bank']['name'] ?? 'N/A') . "
+║ 🌍 Country: " . ($data['country']['name'] ?? 'Unknown') . " " . ($data['country']['emoji'] ?? '') . "
+╚══════════════════════╝
+";
+        
+        sendMessage($chatId, $text, $msgId);
+        break;
+    
+    case '/gen':
+        if (!$args) {
+            sendMessage($chatId, "❌ Use: /gen 400022|x|25|xxx 10", $msgId);
+            break;
+        }
+        
+        $parts = explode(' ', $args);
+        $format = $parts[0];
+        $quantity = isset($parts[1]) ? min((int)$parts[1], 20) : 5;
+        
+        $formatParts = explode('|', $format);
+        if (count($formatParts) < 4) {
+            sendMessage($chatId, "❌ Invalid format! Use: BIN|MM|YY|CVV", $msgId);
+            break;
+        }
+        
+        $bin = $formatParts[0];
+        $cards = [];
+        for ($i = 0; $i < $quantity; $i++) {
+            $cc = $bin;
+            while (strlen($cc) < 15) $cc .= rand(0, 9);
+            
+            // Luhn check digit
+            $digits = str_split($cc);
+            $sum = 0;
+            $alt = true;
+            for ($j = count($digits) - 1; $j >= 0; $j--) {
+                $d = (int)$digits[$j];
+                if ($alt) {
+                    $d *= 2;
+                    if ($d > 9) $d -= 9;
+                }
+                $sum += $d;
+                $alt = !$alt;
+            }
+            $check = (10 - ($sum % 10)) % 10;
+            $cc .= $check;
+            
+            $month = str_pad(rand(1, 12), 2, '0', STR_PAD_LEFT);
+            $year = rand(25, 30);
+            $cvv = rand(100, 999);
+            
+            $cards[] = "$cc|$month|$year|$cvv";
+        }
+        
+        $text = "
+╔══════════════════════╗
+║   「 GENERATOR 」     ║
+╠══════════════════════╣
+║ 🎴 Generated: $quantity cards
+║ 📝 Format: $format
+╠══════════════════════╣
+" . implode("\n", array_map(fn($c) => "<code>$c</code>", $cards)) . "
+╚══════════════════════╝
+";
+        
+        sendMessage($chatId, $text, $msgId);
+        break;
+    
+    case '/rand':
+        $country = $args ?: 'us';
+        
+        $url = "https://randomuser.me/api/1.4/?nat=" . strtolower($country);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($response, true);
+        $user = $data['results'][0] ?? null;
+        
+        if (!$user) {
+            sendMessage($chatId, "❌ Invalid country code", $msgId);
+            break;
+        }
+        
+        $location = $user['location'];
+        $name = $user['name'];
+        
+        $text = "
+╔══════════════════════╗
+║   「 ADDRESS 」       ║
+╠══════════════════════╣
+║ 👤 Name: {$name['first']} {$name['last']}
+║ 🏠 Street: {$location['street']['number']} {$location['street']['name']}
+║ 🌆 City: {$location['city']}
+║ 📍 State: {$location['state']}
+║ 📮 Zip: {$location['postcode']}
+║ 🌍 Country: {$location['country']}
+║ 📞 Phone: {$user['phone']}
+║ 📧 Email: {$user['email']}
+╚══════════════════════╝
+";
+        
+        sendMessage($chatId, $text, $msgId);
+        break;
+    
+    case '/sk':
+        $key = trim($args);
+        if (!$key) {
+            sendMessage($chatId, "❌ Use: /sk sk_live_xxx", $msgId);
+            break;
+        }
+        
+        $waitMsg = sendMessage($chatId, "⏳ Checking Stripe Key...");
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/tokens');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, 'card[number]=4242424242424242&card[exp_month]=12&card[exp_year]=2025&card[cvc]=123');
+        curl_setopt($ch, CURLOPT_USERPWD, $key . ':');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        
+        $result = curl_exec($ch);
+        curl_close($ch);
+        
+        $data = json_decode($result, true);
+        
+        if (isset($data['id'])) {
+            $result = '✅ LIVE KEY';
+        } elseif (isset($data['error'])) {
+            if ($data['error']['type'] == 'card_error') {
+                $result = '✅ LIVE KEY';
+            } elseif (strpos($data['error']['message'], 'testmode') !== false) {
+                $result = '⚠️ TEST KEY';
+            } else {
+                $result = '❌ DEAD KEY';
+            }
+        } else {
+            $result = '❌ INVALID KEY';
+        }
+        
+        $text = "
+╔══════════════════════╗
+║   「 KEY CHECK 」     ║
+╠══════════════════════╣
+║ 🔑 Key: <code>$key</code>
+║ 📊 Result: $result
+╚══════════════════════╝
+";
+        
+        editMessage($chatId, $waitMsg, $text);
+        break;
+    
+    case '/lives':
+        $lives = json_decode(file_get_contents($livesDB), true);
+        $lives = array_reverse($lives);
+        
+        if (empty($lives)) {
+            sendMessage($chatId, "📭 No live cards yet", $msgId);
+            break;
+        }
+        
+        $text = "『 LATEST LIVES 』\n━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $count = 0;
+        foreach ($lives as $live) {
+            if ($count++ >= 5) break;
+            $text .= "💳 {$live['card']}\n└ {$live['gate']} - {$live['time']}\n\n";
+        }
+        
+        sendMessage($chatId, $text, $msgId);
+        break;
+    
+    case '/stats':
+        $stats = json_decode(file_get_contents($statsDB), true);
+        $today = date('Y-m-d');
+        $todayStats = $stats[$today] ?? ['total' => 0, 'lives' => 0];
+        
+        $totalChecks = 0;
+        $totalLives = 0;
+        foreach ($stats as $day => $s) {
+            $totalChecks += $s['total'] ?? 0;
+            $totalLives += $s['lives'] ?? 0;
+        }
+        
+        $text = "
+╔══════════════════════╗
+║    「 STATS 」        ║
+╠══════════════════════╣
+║ TODAY
+║ • Checks: {$todayStats['total']}
+║ • Lives: {$todayStats['lives']}
+║ • Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%
+╠══════════════════════╣
+║ ALL TIME
+║ • Checks: $totalChecks
+║ • Lives: $totalLives
+╚══════════════════════╝
+";
+        
+        sendMessage($chatId, $text, $msgId);
+        break;
+    
+    case '/credits':
+        $users = json_decode(file_get_contents($usersDB), true);
+        $user = $users[$userId] ?? [];
+        $plan = getUserPlan($userId);
+        
+        $text = "
+╔══════════════════════╗
+║    「 MY PROFILE 」   ║
+╠══════════════════════╣
+║ 👤 User: @$username
+║ 💎 Plan: $plan
+║ 📊 Checks: " . ($user['checks'] ?? 0) . "
+║ ✅ Lives: " . ($user['lives'] ?? 0) . "
+║ 📈 Rate: " . (($user['checks'] ?? 0) > 0 ? round(($user['lives'] ?? 0) / ($user['checks'] ?? 0) * 100, 1) : 0) . "%
+║ 📅 Joined: " . date('d M Y', ($user['registered'] ?? time())) . "
+╚══════════════════════╝
+";
+        
+        sendMessage($chatId, $text, $msgId);
         break;
     
     default:
         if ($message[0] == '/') {
-            sendMessage($chatId, gradientBox("ERROR", "
-❌ Unknown command: $cmd
-
-Use /start to see available commands
-            "), $msgId);
+            sendMessage($chatId, "❌ Unknown command. Use /start", $msgId);
         }
         break;
 }
