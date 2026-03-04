@@ -1,6 +1,6 @@
 <?php
 /**
- * BS XYRO BOT - ULTIMATE EDITION WITH ADMIN PRICE CONTROL
+ * BS XYRO BOT - FINAL VERSION WITH IMAGE UPLOAD
  * @author @HELOBIY41
  */
 
@@ -28,7 +28,7 @@ $defaultPrices = [
 ];
 
 // ===== FREE GATES =====
-$freeGates = ['/chk', '/au', '/vbv']; // 3 free gates with speed limit
+$freeGates = ['/chk', '/au', '/vbv'];
 
 // ===== DATABASE FILES =====
 $usersDB = "users.json";
@@ -38,9 +38,10 @@ $adminDB = "admin.json";
 $keysDB = "keys.json";
 $pricesDB = "prices.json";
 $logsDB = "logs.json";
+$imagesDB = "images.json";
 
 // Create files if not exist
-$files = [$usersDB, $livesDB, $statsDB, $adminDB, $keysDB, $pricesDB, $logsDB];
+$files = [$usersDB, $livesDB, $statsDB, $adminDB, $keysDB, $pricesDB, $logsDB, $imagesDB];
 foreach ($files as $file) {
     if (!file_exists($file)) file_put_contents($file, json_encode([]));
 }
@@ -57,6 +58,19 @@ $prices = json_decode(file_get_contents($pricesDB), true);
 if (empty($prices)) {
     $prices = $defaultPrices;
     file_put_contents($pricesDB, json_encode($prices, JSON_PRETTY_PRINT));
+}
+
+// Initialize images
+$images = json_decode(file_get_contents($imagesDB), true);
+if (empty($images)) {
+    $images = [
+        'welcome' => 'https://i.ibb.co/wKxk7Kj/welcome.jpg',
+        'gates' => 'https://i.ibb.co/gates.jpg',
+        'tools' => 'https://i.ibb.co/tools.jpg',
+        'pricing' => 'https://i.ibb.co/pricing.jpg',
+        'admin' => 'https://i.ibb.co/admin.jpg'
+    ];
+    file_put_contents($imagesDB, json_encode($images, JSON_PRETTY_PRINT));
 }
 
 // ===== FUNCTIONS =====
@@ -105,6 +119,42 @@ function editMessage($chatId, $msgId, $text, $buttons = null) {
     return @file_get_contents($url);
 }
 
+function editMessagePhoto($chatId, $msgId, $photo, $caption, $buttons = null) {
+    global $website;
+    
+    $data = [
+        'chat_id' => $chatId,
+        'message_id' => $msgId,
+        'media' => json_encode([
+            'type' => 'photo',
+            'media' => $photo,
+            'caption' => $caption,
+            'parse_mode' => 'HTML'
+        ])
+    ];
+    if ($buttons) $data['reply_markup'] = json_encode(['inline_keyboard' => $buttons]);
+    
+    $url = $website . "/editMessageMedia?" . http_build_query($data);
+    return @file_get_contents($url);
+}
+
+// ===== IMAGE FUNCTIONS =====
+function getImage($key) {
+    global $imagesDB;
+    $images = json_decode(file_get_contents($imagesDB), true);
+    return $images[$key] ?? 'https://i.ibb.co/default.jpg';
+}
+
+function updateImage($key, $fileId, $adminId) {
+    global $imagesDB;
+    $images = json_decode(file_get_contents($imagesDB), true);
+    $oldImage = $images[$key] ?? 'none';
+    $images[$key] = $fileId;
+    file_put_contents($imagesDB, json_encode($images, JSON_PRETTY_PRINT));
+    addLog('image_update', $adminId, "Updated $key image from $oldImage to $fileId");
+    return true;
+}
+
 // ===== LOG FUNCTION =====
 function addLog($type, $userId, $details) {
     global $logsDB;
@@ -124,7 +174,7 @@ function checkChannelJoin($userId) {
     global $website, $channels;
     
     foreach ($channels as $channel) {
-        if ($channel['username'] == 'group') continue; // Skip groups (can't check)
+        if ($channel['username'] == 'group') continue;
         
         $chat = str_replace('@', '', $channel['username']);
         $url = $website . "/getChatMember?chat_id=@$chat&user_id=$userId";
@@ -145,11 +195,9 @@ function getVerifyButtons() {
     global $channels;
     $buttons = [];
     
-    // Add channel buttons (4 buttons)
     foreach ($channels as $channel) {
         $buttons[] = [['text' => "📢 Join {$channel['name']}", 'url' => $channel['link']]];
     }
-    // Add verify button
     $buttons[] = [['text' => "✅ I'VE JOINED", 'callback_data' => "verify"]];
     
     return $buttons;
@@ -177,19 +225,6 @@ function getPricingButtons() {
     ];
 }
 
-// ===== GET ADMIN PRICE BUTTONS =====
-function getAdminPriceButtons() {
-    return [
-        [['text' => "💰 Edit Daily Price", 'callback_data' => "admin_price_daily"]],
-        [['text' => "💰 Edit Weekly Price", 'callback_data' => "admin_price_weekly"]],
-        [['text' => "💰 Edit Monthly Price", 'callback_data' => "admin_price_monthly"]],
-        [['text' => "💰 Edit Yearly Price", 'callback_data' => "admin_price_yearly"]],
-        [['text' => "📊 View Current Prices", 'callback_data' => "admin_view_prices"]],
-        [['text' => "📋 Price Logs", 'callback_data' => "admin_price_logs"]],
-        [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
-    ];
-}
-
 // ===== GET ADMIN MENU BUTTONS =====
 function getAdminMenuButtons() {
     return [
@@ -197,9 +232,23 @@ function getAdminMenuButtons() {
         [['text' => "👥 Users", 'callback_data' => "admin_users"]],
         [['text' => "💰 Prices", 'callback_data' => "admin_prices"]],
         [['text' => "🔑 Keys", 'callback_data' => "admin_keys"]],
+        [['text' => "🖼️ Images", 'callback_data' => "admin_images"]],
         [['text' => "📢 Broadcast", 'callback_data' => "admin_broadcast"]],
         [['text' => "📋 Logs", 'callback_data' => "admin_logs"]],
         [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+    ];
+}
+
+// ===== GET ADMIN IMAGE BUTTONS =====
+function getAdminImageButtons() {
+    return [
+        [['text' => "🖼️ Welcome Image", 'callback_data' => "admin_img_welcome"]],
+        [['text' => "🖼️ Gates Image", 'callback_data' => "admin_img_gates"]],
+        [['text' => "🖼️ Tools Image", 'callback_data' => "admin_img_tools"]],
+        [['text' => "🖼️ Pricing Image", 'callback_data' => "admin_img_pricing"]],
+        [['text' => "🖼️ Admin Image", 'callback_data' => "admin_img_admin"]],
+        [['text' => "📋 View All Images", 'callback_data' => "admin_view_images"]],
+        [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
     ];
 }
 
@@ -276,10 +325,8 @@ function checkRateLimit($userId) {
     $lastCheck = $users[$userId]['last_check'] ?? 0;
     $timeDiff = time() - $lastCheck;
     
-    // Premium users: no limit
     if ($users[$userId]['plan'] == 'premium') return true;
     
-    // Free users: 10 second limit
     if ($timeDiff < 10) {
         return 10 - $timeDiff;
     }
@@ -476,29 +523,27 @@ function getPricingMessage() {
     return $msg;
 }
 
-// ===== GET ADMIN PRICE MESSAGE =====
-function getAdminPriceMessage() {
-    $prices = getAllPrices();
+// ===== GET ADMIN IMAGE MESSAGE =====
+function getAdminImageMessage() {
+    global $imagesDB;
+    $images = json_decode(file_get_contents($imagesDB), true);
     
     $msg = "
 ╔══════════════════════╗
-║   「 💰 PRICE MGMT 」 ║
+║   「 🖼️ IMAGE MGMT 」 ║
 ╠══════════════════════╣
-║ <b>Current Prices:</b>
+║ <b>Current Images:</b>
 ║ ━━━━━━━━━━━━━━━━━━━━
-║ ⚡ Daily   → \${$prices['daily']['usd']} / ₹{$prices['daily']['inr']}
-║ 📅 Weekly  → \${$prices['weekly']['usd']} / ₹{$prices['weekly']['inr']}
-║ 🔥 Monthly → \${$prices['monthly']['usd']} / ₹{$prices['monthly']['inr']}
-║ 💎 Yearly  → \${$prices['yearly']['usd']} / ₹{$prices['yearly']['inr']}
+║ 🖼️ Welcome: " . substr($images['welcome'], 0, 30) . "...
+║ 🖼️ Gates: " . substr($images['gates'], 0, 30) . "...
+║ 🖼️ Tools: " . substr($images['tools'], 0, 30) . "...
+║ 🖼️ Pricing: " . substr($images['pricing'], 0, 30) . "...
+║ 🖼️ Admin: " . substr($images['admin'], 0, 30) . "...
 ╠══════════════════════╣
-║ <b>Commands:</b>
-║ ━━━━━━━━━━━━━━━━━━━━
-║ <code>/setprice daily 1 80</code>
-║ <code>/setprice weekly 3 250</code>
-║ <code>/setprice monthly 8 600</code>
-║ <code>/setprice yearly 30 2500</code>
-║
-║ <code>/pricehistory</code> - View price changes
+║ <b>To update image:</b>
+║ 1. Click button below
+║ 2. Send new photo
+║ 3. Bot will auto-update
 ╚══════════════════════╝
 ";
     
@@ -590,6 +635,7 @@ function getLogsMessage($type = 'all') {
             'price_change' => '💰',
             'ban' => '🔨',
             'unban' => '🔓',
+            'image_update' => '🖼️',
             default => '📝'
         };
         $msg .= "$typeIcon [{$log['time']}]\n";
@@ -731,11 +777,14 @@ if (isset($update['callback_query'])) {
             file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
             
             $msg = getWelcomeMessage($userId, $username, $firstname);
+            $welcomeImg = getImage('welcome');
             
-            // Send new message with main menu
-            sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $msg, getMainMenuButtons());
+            if (strpos($welcomeImg, 'http') === 0) {
+                sendPhoto($chatId, $welcomeImg, $msg, getMainMenuButtons());
+            } else {
+                sendPhoto($chatId, $welcomeImg, $msg, getMainMenuButtons());
+            }
             
-            // Delete old message
             file_get_contents($website . "/deleteMessage?chat_id=$chatId&message_id=$msgId");
         } else {
             file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=❌ You haven't joined all channels!&show_alert=true");
@@ -746,7 +795,13 @@ if (isset($update['callback_query'])) {
     // Handle main menu
     if ($data == 'main_menu') {
         $msg = getWelcomeMessage($userId, $username, $firstname);
-        editMessage($chatId, $msgId, $msg, getMainMenuButtons());
+        $welcomeImg = getImage('welcome');
+        
+        if ($callback['message']['photo']) {
+            editMessagePhoto($chatId, $msgId, $welcomeImg, $msg, getMainMenuButtons());
+        } else {
+            editMessage($chatId, $msgId, $msg, getMainMenuButtons());
+        }
         exit;
     }
     
@@ -771,9 +826,17 @@ if (isset($update['callback_query'])) {
 ║ <code>/sh</code> - Shopify 0.98$
 ╚══════════════════════╝
 ";
-        editMessage($chatId, $msgId, $text, [
-            [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-        ]);
+        $gatesImg = getImage('gates');
+        
+        if ($callback['message']['photo']) {
+            editMessagePhoto($chatId, $msgId, $gatesImg, $text, [
+                [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+            ]);
+        } else {
+            editMessage($chatId, $msgId, $text, [
+                [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+            ]);
+        }
         exit;
     }
     
@@ -792,15 +855,29 @@ if (isset($update['callback_query'])) {
 ║ <code>/credits</code> - My Profile
 ╚══════════════════════╝
 ";
-        editMessage($chatId, $msgId, $text, [
-            [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
-        ]);
+        $toolsImg = getImage('tools');
+        
+        if ($callback['message']['photo']) {
+            editMessagePhoto($chatId, $msgId, $toolsImg, $text, [
+                [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+            ]);
+        } else {
+            editMessage($chatId, $msgId, $text, [
+                [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
+            ]);
+        }
         exit;
     }
     
     // Handle pricing menu
     if ($data == 'menu_pricing') {
-        editMessage($chatId, $msgId, getPricingMessage(), getPricingButtons());
+        $pricingImg = getImage('pricing');
+        
+        if ($callback['message']['photo']) {
+            editMessagePhoto($chatId, $msgId, $pricingImg, getPricingMessage(), getPricingButtons());
+        } else {
+            editMessage($chatId, $msgId, getPricingMessage(), getPricingButtons());
+        }
         exit;
     }
     
@@ -849,7 +926,13 @@ if (isset($update['callback_query'])) {
             file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=⛔ Admin Only!&show_alert=true");
             exit;
         }
-        editMessage($chatId, $msgId, "👑 Admin Panel:", getAdminMenuButtons());
+        $adminImg = getImage('admin');
+        
+        if ($callback['message']['photo']) {
+            editMessagePhoto($chatId, $msgId, $adminImg, "👑 Admin Panel:", getAdminMenuButtons());
+        } else {
+            editMessage($chatId, $msgId, "👑 Admin Panel:", getAdminMenuButtons());
+        }
         exit;
     }
     
@@ -893,56 +976,30 @@ if (isset($update['callback_query'])) {
         exit;
     }
     
-    // Admin prices menu
+    // Admin prices
     if ($data == 'admin_prices') {
         if (!isAdmin($userId)) exit;
-        editMessage($chatId, $msgId, getAdminPriceMessage(), getAdminPriceButtons());
-        exit;
-    }
-    
-    // Admin price edit options
-    if (strpos($data, 'admin_price_') === 0) {
-        if (!isAdmin($userId)) exit;
-        $plan = str_replace('admin_price_', '', $data);
-        $current = getPrice($plan);
-        $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
+        $prices = getAllPrices();
         
         $text = "
 ╔══════════════════════╗
-║   「 Edit {$planNames[$plan]} 」  ║
+║   「 💰 PRICES 」     ║
 ╠══════════════════════╣
-║ Current:
-║ USD: \${$current['usd']}
-║ INR: ₹{$current['inr']}
+║ Current Prices:
+║ Daily: \${$prices['daily']['usd']} / ₹{$prices['daily']['inr']}
+║ Weekly: \${$prices['weekly']['usd']} / ₹{$prices['weekly']['inr']}
+║ Monthly: \${$prices['monthly']['usd']} / ₹{$prices['monthly']['inr']}
+║ Yearly: \${$prices['yearly']['usd']} / ₹{$prices['yearly']['inr']}
 ╠══════════════════════╣
-║ <b>To change:</b>
-║ <code>/setprice $plan [usd] [inr]</code>
+║ <b>To update:</b>
+║ <code>/setprice [plan] [usd] [inr]</code>
 ║
 ║ Example:
-║ <code>/setprice $plan 2 160</code>
+║ <code>/setprice daily 2 160</code>
 ╚══════════════════════╝
 ";
         editMessage($chatId, $msgId, $text, [
-            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
-        ]);
-        exit;
-    }
-    
-    // Admin view prices
-    if ($data == 'admin_view_prices') {
-        if (!isAdmin($userId)) exit;
-        editMessage($chatId, $msgId, getAdminPriceMessage(), [
-            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
-        ]);
-        exit;
-    }
-    
-    // Admin price logs
-    if ($data == 'admin_price_logs') {
-        if (!isAdmin($userId)) exit;
-        editMessage($chatId, $msgId, getLogsMessage('price_change'), [
-            [['text' => "🔄 Refresh", 'callback_data' => "admin_price_logs"]],
-            [['text' => "🔙 BACK", 'callback_data' => "admin_prices"]]
+            [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
         ]);
         exit;
     }
@@ -971,6 +1028,82 @@ if (isset($update['callback_query'])) {
 ";
         editMessage($chatId, $msgId, $text, [
             [['text' => "🔙 BACK", 'callback_data' => "menu_admin"]]
+        ]);
+        exit;
+    }
+    
+    // Admin images menu
+    if ($data == 'admin_images') {
+        if (!isAdmin($userId)) exit;
+        editMessage($chatId, $msgId, getAdminImageMessage(), getAdminImageButtons());
+        exit;
+    }
+    
+    // Admin image selection
+    if (strpos($data, 'admin_img_') === 0) {
+        if (!isAdmin($userId)) exit;
+        $imgKey = str_replace('admin_img_', '', $data);
+        $imgNames = [
+            'welcome' => 'Welcome',
+            'gates' => 'Gates',
+            'tools' => 'Tools',
+            'pricing' => 'Pricing',
+            'admin' => 'Admin'
+        ];
+        
+        $text = "
+╔══════════════════════╗
+║   「 Update {$imgNames[$imgKey]} 」  ║
+╠══════════════════════╣
+║ To update {$imgNames[$imgKey]} image:
+║
+║ 1. Send a new photo
+║ 2. Reply to this message
+║    with /setimage $imgKey
+║
+║ Example:
+║ <code>/setimage $imgKey</code>
+║ (reply to a photo)
+╚══════════════════════╝
+";
+        
+        // Store pending image update
+        $pendingFile = "pending_{$userId}.json";
+        file_put_contents($pendingFile, json_encode(['key' => $imgKey]));
+        
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "admin_images"]]
+        ]);
+        exit;
+    }
+    
+    // Admin view images
+    if ($data == 'admin_view_images') {
+        if (!isAdmin($userId)) exit;
+        $images = json_decode(file_get_contents($imagesDB), true);
+        
+        $text = "
+╔══════════════════════╗
+║   「 ALL IMAGES 」    ║
+╠══════════════════════╣
+║ 🖼️ Welcome: 
+║ " . substr($images['welcome'], 0, 50) . "
+║
+║ 🖼️ Gates: 
+║ " . substr($images['gates'], 0, 50) . "
+║
+║ 🖼️ Tools: 
+║ " . substr($images['tools'], 0, 50) . "
+║
+║ 🖼️ Pricing: 
+║ " . substr($images['pricing'], 0, 50) . "
+║
+║ 🖼️ Admin: 
+║ " . substr($images['admin'], 0, 50) . "
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "admin_images"]]
         ]);
         exit;
     }
@@ -1036,7 +1169,42 @@ if (!isRegistered($userId)) {
 // Check if verified
 if (!isVerified($userId)) {
     $welcomeMsg = getWelcomeMessage($userId, $username, $firstname);
-    sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $welcomeMsg, getVerifyButtons());
+    $welcomeImg = getImage('welcome');
+    sendPhoto($chatId, $welcomeImg, $welcomeMsg, getVerifyButtons());
+    exit;
+}
+
+// Check for image set command
+if ($message == '/setimage' && isset($update['message']['reply_to_message']['photo'])) {
+    if (!isAdmin($userId)) {
+        sendMessage($chatId, "❌ Admin only!", $msgId);
+        exit;
+    }
+    
+    $pendingFile = "pending_{$userId}.json";
+    if (!file_exists($pendingFile)) {
+        sendMessage($chatId, "❌ No pending image update. Please select from admin panel first.", $msgId);
+        exit;
+    }
+    
+    $pending = json_decode(file_get_contents($pendingFile), true);
+    $imgKey = $pending['key'];
+    unlink($pendingFile);
+    
+    $photos = $update['message']['reply_to_message']['photo'];
+    $fileId = end($photos)['file_id'];
+    
+    updateImage($imgKey, $fileId, $userId);
+    
+    $imgNames = [
+        'welcome' => 'Welcome',
+        'gates' => 'Gates',
+        'tools' => 'Tools',
+        'pricing' => 'Pricing',
+        'admin' => 'Admin'
+    ];
+    
+    sendMessage($chatId, "✅ {$imgNames[$imgKey]} image updated successfully!", $msgId);
     exit;
 }
 
@@ -1048,14 +1216,14 @@ switch ($cmd) {
     
     case '/start':
         $welcomeMsg = getWelcomeMessage($userId, $username, $firstname);
-        sendPhoto($chatId, "https://i.ibb.co/wKxk7Kj/welcome.jpg", $welcomeMsg, getMainMenuButtons());
+        $welcomeImg = getImage('welcome');
+        sendPhoto($chatId, $welcomeImg, $welcomeMsg, getMainMenuButtons());
         break;
     
     // FREE GATES (with rate limit)
     case '/chk':
     case '/au':
     case '/vbv':
-        // Check rate limit
         $rateLimit = checkRateLimit($userId);
         if ($rateLimit !== true) {
             sendMessage($chatId, "⏳ Please wait $rateLimit seconds before using this gate again.", $msgId);
@@ -1217,55 +1385,6 @@ switch ($cmd) {
         sendMessage($chatId, "✅ {$planNames[$plan]} price updated!\nUSD: \$$usd\nINR: ₹$inr", $msgId);
         break;
     
-    // ADMIN PRICE HISTORY
-    case '/pricehistory':
-        if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
-            break;
-        }
-        sendMessage($chatId, getLogsMessage('price_change'), $msgId);
-        break;
-    
-    // ADMIN BAN COMMAND
-    case '/ban':
-        if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
-            break;
-        }
-        
-        if (!$args) {
-            sendMessage($chatId, "❌ Use: /ban [user_id]", $msgId);
-            break;
-        }
-        
-        $targetId = (int)$args;
-        if (banUser($targetId)) {
-            sendMessage($chatId, "✅ User $targetId has been banned.", $msgId);
-        } else {
-            sendMessage($chatId, "❌ User not found!", $msgId);
-        }
-        break;
-    
-    // ADMIN UNBAN COMMAND
-    case '/unban':
-        if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
-            break;
-        }
-        
-        if (!$args) {
-            sendMessage($chatId, "❌ Use: /unban [user_id]", $msgId);
-            break;
-        }
-        
-        $targetId = (int)$args;
-        if (unbanUser($targetId)) {
-            sendMessage($chatId, "✅ User $targetId has been unbanned.", $msgId);
-        } else {
-            sendMessage($chatId, "❌ User not found!", $msgId);
-        }
-        break;
-    
     // ADMIN KEY GENERATION
     case '/genkey':
         if (!isAdmin($userId)) {
@@ -1348,6 +1467,46 @@ switch ($cmd) {
 ";
         
         sendMessage($chatId, $text, $msgId);
+        break;
+    
+    // ADMIN BAN COMMAND
+    case '/ban':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        
+        if (!$args) {
+            sendMessage($chatId, "❌ Use: /ban [user_id]", $msgId);
+            break;
+        }
+        
+        $targetId = (int)$args;
+        if (banUser($targetId)) {
+            sendMessage($chatId, "✅ User $targetId has been banned.", $msgId);
+        } else {
+            sendMessage($chatId, "❌ User not found!", $msgId);
+        }
+        break;
+    
+    // ADMIN UNBAN COMMAND
+    case '/unban':
+        if (!isAdmin($userId)) {
+            sendMessage($chatId, "❌ Admin only!", $msgId);
+            break;
+        }
+        
+        if (!$args) {
+            sendMessage($chatId, "❌ Use: /unban [user_id]", $msgId);
+            break;
+        }
+        
+        $targetId = (int)$args;
+        if (unbanUser($targetId)) {
+            sendMessage($chatId, "✅ User $targetId has been unbanned.", $msgId);
+        } else {
+            sendMessage($chatId, "❌ User not found!", $msgId);
+        }
         break;
     
     // ADMIN BROADCAST
