@@ -1,6 +1,5 @@
 requests
 cloudscraper
 beautifulsoup4
-colorama
 urllib3
-getuseragent
+
