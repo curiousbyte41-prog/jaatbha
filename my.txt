@@ -1,7 +1,7 @@
 <?php
 /**
- * ULTIMATE CC CHECKER BOT - FINAL VERSION
- * All Gates + Mass Check + File Upload + Live Stripe Keys
+ * BS XYRO ULTIMATE CC CHECKER BOT
+ * Complete Integrated Version with Python Checkers
  * @author @HELOBIY41
  */
 
@@ -9,6 +9,7 @@
 $botToken = "8783459954:AAGAf-LwIZEtaPyxIaw1imq-dBLuf4QshBc";
 $ownerId = 6185091342;
 $ownerUsername = "@HELOBIY41";
+$botName = "BS XYRO";
 $website = "https://api.telegram.org/bot".$botToken;
 
 // YOUR LIVE STRIPE KEYS
@@ -20,7 +21,7 @@ $updateChannel = "@RG3741";
 $statsChannel = "@RG374";
 $publicGroup = "@RG3741";
 
-// Price Configuration (CHEAP RATES)
+// Price Configuration
 $prices = [
     'daily' => ['usd' => 1, 'inr' => 80],
     'weekly' => ['usd' => 3, 'inr' => 250],
@@ -57,9 +58,10 @@ if (empty($settings)) {
         'stats_channel' => $statsChannel,
         'group' => $publicGroup,
         'prices' => $prices,
-        'welcome_msg' => "Welcome to CC Checker Bot!",
+        'welcome_msg' => "Welcome to BS XYRO Checker!",
         'maintenance' => false,
         'owner' => $ownerUsername,
+        'bot_name' => $botName,
         'mass_limit' => 30,
         'retry_limit' => 3
     ];
@@ -114,6 +116,45 @@ function getStr($string, $start, $end) {
     if (!isset($str[1])) return '';
     $str = explode($end, $str[1]);
     return $str[0];
+}
+
+// ===== PYTHON GATE EXECUTOR =====
+function executePythonGate($script, $card) {
+    $scriptPath = __DIR__ . '/' . $script;
+    if (!file_exists($scriptPath)) {
+        return ['status' => 'DEAD', 'msg' => 'Gate script not found'];
+    }
+    $cardEscaped = escapeshellarg($card);
+    $command = "python3 $scriptPath $cardEscaped 2>&1";
+    $output = shell_exec($command);
+    $result = json_decode($output, true);
+    if (!$result || !isset($result['status'])) {
+        error_log("Python gate error: $output");
+        return ['status' => 'DEAD', 'msg' => 'Gate execution error'];
+    }
+    return $result;
+}
+
+// ===== FORMATTING FUNCTIONS =====
+
+function formatHeader($gate, $type = '') {
+    global $botName;
+    return "『 $botName $gate $type 』\n━━━━━━━━━━━━━━━━━━━━━━━";
+}
+
+function formatCard($card) {
+    $parts = explode('|', $card);
+    return substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
+}
+
+function formatCardShort($card) {
+    return substr($card, 0, 6) . 'XXXXXX' . substr($card, -4);
+}
+
+function getUserBadge($userId) {
+    if (isAdmin($userId)) return "👑 ADMIN";
+    if (isPremium($userId)) return "⭐ PREMIUM";
+    return "🆓 FREE";
 }
 
 // ===== USER FUNCTIONS =====
@@ -246,6 +287,7 @@ function binLookup($bin) {
         'bank' => $data['bank']['name'] ?? 'N/A',
         'brand' => $data['scheme'] ?? 'N/A',
         'type' => $data['type'] ?? 'N/A',
+        'level' => $data['brand'] ?? 'N/A',
         'country' => $data['country']['name'] ?? 'N/A',
         'emoji' => $data['country']['emoji'] ?? '🌍',
         'currency' => $data['country']['currency'] ?? 'USD'
@@ -277,7 +319,7 @@ function parseCard($text) {
 // ===== SAVE LIVE CARD =====
 
 function saveLive($card, $gate, $binfo, $userId) {
-    global $livesDB, $statsChannel;
+    global $livesDB, $statsChannel, $botName;
     
     $lives = json_decode(file_get_contents($livesDB), true);
     $lives[] = [
@@ -294,13 +336,16 @@ function saveLive($card, $gate, $binfo, $userId) {
     $users = json_decode(file_get_contents($GLOBALS['usersDB']), true);
     $username = $users[$userId]['username'] ?? 'User';
     
-    $msg = "✅ <b>NEW LIVE CARD</b>\n\n";
-    $msg .= "💳 Card: " . substr($card, 0, 6) . 'XXXXXX' . substr($card, -4) . "\n";
-    $msg .= "🚪 Gate: $gate\n";
-    $msg .= "🏦 Bank: {$binfo['bank']}\n";
-    $msg .= "🌍 Country: {$binfo['country']}\n";
-    $msg .= "👤 Found by: @$username\n";
-    $msg .= "⏰ Time: " . date('H:i:s');
+    $msg = "『 $botName ─ LIVE 』\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $msg .= "💳 <b>Card</b> ➜ " . substr($card, 0, 6) . 'XXXXXX' . substr($card, -4) . "\n";
+    $msg .= "🚪 <b>Gate</b> ➜ $gate\n";
+    $msg .= "🏦 <b>Bank</b> ➜ {$binfo['bank']}\n";
+    $msg .= "🌍 <b>Country</b> ➜ {$binfo['country']} {$binfo['emoji']}\n";
+    $msg .= "👤 <b>Found by</b> ➜ @$username\n";
+    $msg .= "⏱️ <b>Time</b> ➜ " . date('H:i:s') . "\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $msg .= "『 @RG3741 // RG374 』";
     
     if ($statsChannel) sendMessage($statsChannel, $msg);
 }
@@ -347,171 +392,50 @@ function updateStats($userId, $gate, $status) {
     }
 }
 
-// ===== GATES =====
+// ===== PYTHON GATES =====
 
-// Stripe 0.30$ Gate - WITH LIVE SK KEY
 function gateStripe($card) {
-    global $stripe_sk_live;
-    
-    $start = microtime(true);
-    $parts = explode('|', $card);
-    $cc = $parts[0];
-    $mm = $parts[1];
-    $yy = $parts[2];
-    $cvv = $parts[3];
-    
-    $binfo = binLookup($cc);
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/tokens');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'card[number]' => $cc,
-        'card[exp_month]' => $mm,
-        'card[exp_year]' => '20' . $yy,
-        'card[cvc]' => $cvv
-    ]));
-    curl_setopt($ch, CURLOPT_USERPWD, $stripe_sk_live . ':');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    
-    $result = curl_exec($ch);
-    $time = round(microtime(true) - $start, 2);
-    curl_close($ch);
-    
-    $data = json_decode($result, true);
-    
-    if (isset($data['id'])) {
-        return ['status' => 'LIVE', 'msg' => '✅ CHARGED - $0.30', 'binfo' => $binfo, 'time' => $time];
-    } elseif (isset($data['error'])) {
-        $error = $data['error'];
-        if ($error['code'] == 'incorrect_cvc') {
-            return ['status' => 'LIVE', 'msg' => '⚠️ CCN LIVE - Invalid CVV', 'binfo' => $binfo, 'time' => $time];
-        } elseif ($error['code'] == 'insufficient_funds') {
-            return ['status' => 'LIVE', 'msg' => '💰 INSUFFICIENT FUNDS', 'binfo' => $binfo, 'time' => $time];
-        } else {
-            return ['status' => 'DEAD', 'msg' => '❌ ' . $error['message'], 'binfo' => $binfo, 'time' => $time];
-        }
-    }
-    
-    return ['status' => 'DEAD', 'msg' => '❌ Unknown error', 'binfo' => $binfo, 'time' => $time];
+    $result = executePythonGate('stripe_auth2.py', $card);
+    $binfo = binLookup(explode('|',$card)[0]);
+    $result['binfo'] = $binfo;
+    $result['time'] = 0;
+    return $result;
 }
 
-// Stripe Auth Gate - WITH LIVE PK KEY
 function gateAuth($card) {
-    global $stripe_pk_live;
-    
-    $start = microtime(true);
-    $parts = explode('|', $card);
-    $cc = $parts[0];
-    $mm = $parts[1];
-    $yy = $parts[2];
-    $cvv = $parts[3];
-    
-    $binfo = binLookup($cc);
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/payment_methods');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'type' => 'card',
-        'card[number]' => $cc,
-        'card[exp_month]' => $mm,
-        'card[exp_year]' => '20' . $yy,
-        'card[cvc]' => $cvv
-    ]));
-    curl_setopt($ch, CURLOPT_USERPWD, $stripe_pk_live . ':');
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    
-    $result = curl_exec($ch);
-    $time = round(microtime(true) - $start, 2);
-    curl_close($ch);
-    
-    $data = json_decode($result, true);
-    
-    if (isset($data['id'])) {
-        return ['status' => 'LIVE', 'msg' => '✅ AUTH SUCCESS', 'binfo' => $binfo, 'time' => $time];
-    } else {
-        return ['status' => 'DEAD', 'msg' => '❌ Auth Failed', 'binfo' => $binfo, 'time' => $time];
-    }
+    $result = executePythonGate('qee.py', $card);
+    $binfo = binLookup(explode('|',$card)[0]);
+    $result['binfo'] = $binfo;
+    $result['time'] = 0;
+    return $result;
 }
 
-// Braintree Charge (Premium)
 function gateBr($card) {
-    $start = microtime(true);
-    $parts = explode('|', $card);
-    $cc = $parts[0];
-    $mm = $parts[1];
-    $yy = $parts[2];
-    $cvv = $parts[3];
-    
-    $binfo = binLookup($cc);
-    
-    usleep(rand(300000, 700000));
-    $time = round(microtime(true) - $start, 2);
-    
-    $rand = rand(1, 100);
-    if ($rand > 70) {
-        return ['status' => 'LIVE', 'msg' => '✅ BRAINTREE CHARGE SUCCESS', 'binfo' => $binfo, 'time' => $time];
-    } elseif ($rand > 40) {
-        return ['status' => 'LIVE', 'msg' => '⚠️ CCN LIVE - CVV Mismatch', 'binfo' => $binfo, 'time' => $time];
-    } else {
-        return ['status' => 'DEAD', 'msg' => '❌ Card Declined', 'binfo' => $binfo, 'time' => $time];
-    }
+    $result = executePythonGate('paypal_exe.py', $card);
+    $binfo = binLookup(explode('|',$card)[0]);
+    $result['binfo'] = $binfo;
+    $result['time'] = 0;
+    return $result;
 }
 
-// Chase Check (Premium)
 function gateChk($card) {
-    $start = microtime(true);
-    $parts = explode('|', $card);
-    $cc = $parts[0];
-    $mm = $parts[1];
-    $yy = $parts[2];
-    $cvv = $parts[3];
-    
-    $binfo = binLookup($cc);
-    
-    usleep(rand(400000, 800000));
-    $time = round(microtime(true) - $start, 2);
-    
-    $rand = rand(1, 100);
-    if ($rand > 65) {
-        return ['status' => 'LIVE', 'msg' => '✅ CHASE APPROVED', 'binfo' => $binfo, 'time' => $time];
-    } elseif ($rand > 35) {
-        return ['status' => 'LIVE', 'msg' => '⚠️ CCN LIVE - AVS Failed', 'binfo' => $binfo, 'time' => $time];
-    } else {
-        return ['status' => 'DEAD', 'msg' => '❌ Chase Declined', 'binfo' => $binfo, 'time' => $time];
-    }
+    $result = executePythonGate('str_charge.py', $card);
+    $binfo = binLookup(explode('|',$card)[0]);
+    $result['binfo'] = $binfo;
+    $result['time'] = 0;
+    return $result;
 }
 
-// Shopify Gate (Premium)
 function gateShopify($card) {
-    $start = microtime(true);
-    $parts = explode('|', $card);
-    $cc = $parts[0];
-    $mm = $parts[1];
-    $yy = $parts[2];
-    $cvv = $parts[3];
-    
-    $binfo = binLookup($cc);
-    
-    usleep(rand(500000, 900000));
-    $time = round(microtime(true) - $start, 2);
-    
-    $rand = rand(1, 100);
-    if ($rand > 60) {
-        return ['status' => 'LIVE', 'msg' => '✅ SHOPIFY APPROVED 10$', 'binfo' => $binfo, 'time' => $time];
-    } elseif ($rand > 30) {
-        return ['status' => 'LIVE', 'msg' => '⚠️ CCN LIVE - CVV Mismatch', 'binfo' => $binfo, 'time' => $time];
-    } else {
-        return ['status' => 'DEAD', 'msg' => '❌ Do Not Honor', 'binfo' => $binfo, 'time' => $time];
-    }
+    $result = executePythonGate('shopify_iyzico.py', $card);
+    $binfo = binLookup(explode('|',$card)[0]);
+    $result['binfo'] = $binfo;
+    $result['time'] = 0;
+    return $result;
 }
 
 // ===== TOOLS =====
 
-// CC Generator
 function toolGen($input) {
     $parts = explode(' ', $input);
     $format = $parts[0];
@@ -570,7 +494,6 @@ function toolGen($input) {
     return $cards;
 }
 
-// Random Address
 function toolRand($country = 'us') {
     $url = "https://randomuser.me/api/1.4/?nat=" . strtolower($country);
     $ch = curl_init();
@@ -601,7 +524,6 @@ function toolRand($country = 'us') {
     ];
 }
 
-// Stripe Key Checker
 function toolSk($key) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/tokens');
@@ -631,16 +553,16 @@ function toolSk($key) {
     return '❌ INVALID KEY';
 }
 
-// ===== MASS CHECK FUNCTION =====
+// ===== MASS CHECK =====
 
 function massCheck($cards, $userId, $chatId, $msgId) {
-    global $settings;
+    global $settings, $botName;
     
     $results = [];
     $lives = [];
     $total = count($cards);
     
-    $progressMsg = sendMessage($chatId, "⏳ <b>Mass Check Started</b>\n\n📊 Total Cards: $total\n⏱️ Processing...");
+    $progressMsg = sendMessage($chatId, "『 $botName ─ MASS 』\n━━━━━━━━━━━━━━━━━━━━━━━\n⏳ <b>Processing:</b> 0/$total\n━━━━━━━━━━━━━━━━━━━━━━━");
     
     for ($i = 0; $i < $total; $i++) {
         $card = $cards[$i];
@@ -652,10 +574,10 @@ function massCheck($cards, $userId, $chatId, $msgId) {
         
         $result = $gateFunc($card);
         
-        $status = $result['status'] == 'LIVE' ? '✅' : '❌';
-        $shortCard = substr($parts[0], 0, 6) . 'XXXXXX' . substr($parts[0], -4);
+        $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
+        $shortCard = formatCardShort($card);
         
-        $results[] = "$status $shortCard|{$parts[1]}|{$parts[2]} - {$result['msg']}";
+        $results[] = "$statusIcon $shortCard - {$result['msg']}";
         
         if ($result['status'] == 'LIVE') {
             $lives[] = $card;
@@ -665,40 +587,34 @@ function massCheck($cards, $userId, $chatId, $msgId) {
         updateStats($userId, 'MASS', $result['status']);
         
         if (($i + 1) % 5 == 0 || $i == $total - 1) {
-            $progress = "⏳ <b>Mass Check Progress</b>\n\n";
-            $progress .= "📊 Checked: " . ($i + 1) . "/$total\n";
-            $progress .= "✅ Lives: " . count($lives) . "\n";
-            $progress .= "❌ Dead: " . (($i + 1) - count($lives));
-            
+            $progress = "『 $botName ─ MASS 』\n━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $progress .= "⏳ <b>Processing:</b> " . ($i + 1) . "/$total\n";
+            $progress .= "✅ <b>Lives:</b> " . count($lives) . "\n";
+            $progress .= "━━━━━━━━━━━━━━━━━━━━━━━";
             editMessage($chatId, $progressMsg, $progress);
         }
         
         usleep(100000);
     }
     
-    $text = "📊 <b>MASS CHECK COMPLETED</b>\n\n";
-    $text .= "✅ <b>Total Cards:</b> $total\n";
-    $text .= "💚 <b>Lives Found:</b> " . count($lives) . "\n";
-    $text .= "❌ <b>Dead:</b> " . ($total - count($lives)) . "\n\n";
+    $text = "『 $botName ─ MASS 』\n━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "✅ <b>Total:</b> $total\n";
+    $text .= "💚 <b>Lives:</b> " . count($lives) . "\n";
+    $text .= "❌ <b>Dead:</b> " . ($total - count($lives)) . "\n";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
     
     if (count($lives) > 0) {
-        $text .= "<b>🎯 LIVE CARDS:</b>\n";
+        $text .= "🎯 <b>LIVE CARDS:</b>\n";
         foreach ($lives as $live) {
             $parts = explode('|', $live);
-            $text .= "✅ " . substr($parts[0], 0, 6) . 'XXXXXX' . substr($parts[0], -4) . "|{$parts[1]}|{$parts[2]}\n";
+            $text .= "✅ " . formatCardShort($live) . "\n";
         }
-        $text .= "\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
     }
     
-    $text .= "<b>📝 DETAILS:</b>\n";
-    foreach (array_slice($results, 0, 10) as $res) {
-        $text .= "$res\n";
-    }
-    if ($total > 10) {
-        $text .= "... and " . ($total - 10) . " more\n";
-    }
-    
-    $text .= "\n👤 Checked by: @{$GLOBALS['username']}";
+    $text .= "👤 <b>Checked by:</b> @{$GLOBALS['username']} [" . getUserPlan($userId) . "]\n";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "『 @RG3741 // RG374 』";
     
     editMessage($chatId, $progressMsg, $text);
 }
@@ -706,7 +622,7 @@ function massCheck($cards, $userId, $chatId, $msgId) {
 // ===== PUBLIC STATS =====
 
 function getPublicStats() {
-    global $statsDB, $livesDB, $usersDB;
+    global $statsDB, $livesDB, $usersDB, $botName;
     
     $stats = json_decode(file_get_contents($statsDB), true);
     $lives = json_decode(file_get_contents($livesDB), true);
@@ -724,24 +640,24 @@ function getPublicStats() {
     
     $recentLives = array_slice(array_reverse($lives), 0, 5);
     
-    $text = "📊 <b>PUBLIC STATISTICS</b>\n\n";
-    $text .= "📈 <b>TODAY</b>\n";
+    $text = "『 $botName ─ STATS 』\n";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "📊 <b>TODAY</b>\n";
     $text .= "• Checks: {$todayStats['total']}\n";
     $text .= "• Lives: {$todayStats['lives']}\n";
-    $text .= "• Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%\n\n";
-    
-    $text .= "📊 <b>ALL TIME</b>\n";
-    $text .= "• Total Checks: $totalChecks\n";
-    $text .= "• Total Lives: $totalLives\n";
-    $text .= "• Users: " . count($users) . "\n\n";
-    
+    $text .= "• Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%\n";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "📈 <b>ALL TIME</b>\n";
+    $text .= "• Checks: $totalChecks\n";
+    $text .= "• Lives: $totalLives\n";
+    $text .= "• Users: " . count($users) . "\n";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
     $text .= "✅ <b>RECENT LIVES</b>\n";
     foreach ($recentLives as $live) {
         $text .= "💳 {$live['card']} - {$live['gate']}\n";
     }
-    
-    $text .= "\n👑 <b>Owner:</b> @HELOBIY41\n";
-    $text .= "📊 <b>Stats Channel:</b> @RG374";
+    $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "『 @RG3741 // RG374 』";
     
     return $text;
 }
@@ -778,7 +694,10 @@ if ($settings['maintenance'] && !isAdmin($userId)) {
 switch ($cmd) {
     
     case '/start':
-        $text = "👋 <b>Welcome to Premium CC Checker!</b>\n\n";
+        $text = "『 $botName 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👋 <b>Welcome to $botName!</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $text .= "🤖 <b>Bot by:</b> @HELOBIY41\n";
         $text .= "📢 <b>Updates:</b> @RG3741\n";
         $text .= "📊 <b>Stats:</b> @RG374\n\n";
@@ -795,6 +714,7 @@ switch ($cmd) {
         $text .= "• /redeem [key] - Redeem key\n";
         $text .= "• /stats - Public stats\n";
         $text .= "• /info - Your info\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -802,15 +722,18 @@ switch ($cmd) {
     case '/cmds':
         $plan = getUserPlan($userId);
         
-        $text = "📋 <b>ALL COMMANDS - $plan</b>\n\n";
+        $text = "『 $botName ─ COMMANDS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👤 <b>Your Plan:</b> $plan\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $text .= "💳 <b>GATES (FREE)</b>\n";
-        $text .= "/str card|mm|yy|cvv - Stripe 0.30\$\n";
-        $text .= "/au card|mm|yy|cvv - Stripe Auth\n\n";
+        $text .= "/str card|mm|yy|cvv - Stripe Auth\n";
+        $text .= "/au card|mm|yy|cvv - QEE PayPal\n\n";
         
         $text .= "⭐ <b>GATES (PREMIUM)</b>\n";
-        $text .= "/br card|mm|yy|cvv - Braintree Charge\n";
-        $text .= "/chk card|mm|yy|cvv - Chase Check\n";
-        $text .= "/sf card|mm|yy|cvv - Shopify 10\$\n\n";
+        $text .= "/br card|mm|yy|cvv - PayPal Charge\n";
+        $text .= "/chk card|mm|yy|cvv - Stripe Charge\n";
+        $text .= "/sf card|mm|yy|cvv - Shopify Iyzico\n\n";
         
         $text .= "📦 <b>MASS CHECK (PREMIUM)</b>\n";
         $text .= "/mass [cards] - Check multiple cards\n";
@@ -829,7 +752,7 @@ switch ($cmd) {
         $text .= "/lives - Recent lives\n\n";
         
         $text .= "📢 <b>Updates:</b> @RG3741\n";
-        $text .= "📊 <b>Stats Channel:</b> @RG374";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         if (isAdmin($userId)) {
             $text .= "\n\n👑 <b>ADMIN</b>\n";
@@ -837,32 +760,37 @@ switch ($cmd) {
             $text .= "/genkey [plan] [days] - Generate key\n";
             $text .= "/keys - List all keys\n";
             $text .= "/users - List users\n";
+            $text .= "/logs - View logs\n";
             $text .= "/broadcast [msg] - Send to all\n";
             $text .= "/setprice [plan] [usd] [inr] - Set prices\n";
             $text .= "/maintenance - Toggle maintenance\n";
+            $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         }
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/gates':
-        $text = "💳 <b>AVAILABLE GATES</b>\n\n";
+        $text = "『 $botName ─ GATES 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "✅ <b>FREE GATES</b>\n";
-        $text .= "• /str - Stripe 0.30\$\n";
-        $text .= "• /au - Stripe Auth\n\n";
+        $text .= "• /str - Stripe Auth\n";
+        $text .= "• /au - QEE PayPal\n\n";
         
         $text .= "⭐ <b>PREMIUM GATES</b>\n";
-        $text .= "• /br - Braintree Charge\n";
-        $text .= "• /chk - Chase Check\n";
-        $text .= "• /sf - Shopify 10\$\n\n";
+        $text .= "• /br - PayPal Charge\n";
+        $text .= "• /chk - Stripe Charge\n";
+        $text .= "• /sf - Shopify Iyzico\n\n";
         
-        $text .= "💰 Buy premium: /buy";
+        $text .= "💰 Buy premium: /buy\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/tools':
-        $text = "🔧 <b>AVAILABLE TOOLS</b>\n\n";
+        $text = "『 $botName ─ TOOLS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "🔍 <b>BIN Lookup</b>\n";
         $text .= "/bin 400022\n\n";
         
@@ -876,43 +804,36 @@ switch ($cmd) {
         
         $text .= "🔑 <b>Stripe Key Check</b>\n";
         $text .= "/sk sk_live_xxx\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/buy':
-        $text = "💰 <b>PREMIUM PLANS - CHEAP RATES</b>\n\n";
-        $text .= "⚡ <b>DAILY PLAN</b>\n";
+        $text = "『 $botName ─ PREMIUM 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "💰 <b>CHEAP RATES</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $text .= "⚡ <b>DAILY</b>\n";
         $text .= "• Price: \${$settings['prices']['daily']['usd']} / ₹{$settings['prices']['daily']['inr']}\n";
-        $text .= "• Duration: 1 Day\n";
-        $text .= "• All Premium Gates\n\n";
+        $text .= "• Duration: 1 Day\n\n";
         
-        $text .= "📅 <b>WEEKLY PLAN</b>\n";
+        $text .= "📅 <b>WEEKLY</b>\n";
         $text .= "• Price: \${$settings['prices']['weekly']['usd']} / ₹{$settings['prices']['weekly']['inr']}\n";
-        $text .= "• Duration: 7 Days\n";
-        $text .= "• All Premium Gates\n\n";
+        $text .= "• Duration: 7 Days\n\n";
         
-        $text .= "🔥 <b>MONTHLY PLAN</b> (Best Value)\n";
+        $text .= "🔥 <b>MONTHLY</b> (Best Value)\n";
         $text .= "• Price: \${$settings['prices']['monthly']['usd']} / ₹{$settings['prices']['monthly']['inr']}\n";
         $text .= "• Duration: 30 Days\n";
-        $text .= "• All Premium Gates\n";
-        $text .= "• Mass Checker\n";
-        $text .= "• Priority Support\n\n";
+        $text .= "• Mass Checker\n\n";
         
-        $text .= "💎 <b>YEARLY PLAN</b>\n";
+        $text .= "💎 <b>YEARLY</b>\n";
         $text .= "• Price: \${$settings['prices']['yearly']['usd']} / ₹{$settings['prices']['yearly']['inr']}\n";
         $text .= "• Duration: 365 Days\n";
-        $text .= "• All Premium Gates\n";
-        $text .= "• Mass Checker\n";
-        $text .= "• Priority Support\n";
         $text .= "• Lifetime Access\n\n";
         
-        $text .= "📲 <b>How to Buy:</b>\n";
-        $text .= "1. Choose plan\n";
-        $text .= "2. Contact @HELOBIY41\n";
-        $text .= "3. Make payment\n";
-        $text .= "4. Get premium key\n\n";
-        $text .= "✅ Use /redeem KEY to activate";
+        $text .= "📲 Contact @HELOBIY41 to buy\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -933,14 +854,16 @@ switch ($cmd) {
         $user = $users[$userId] ?? [];
         $plan = getUserPlan($userId);
         
-        $text = "👤 <b>YOUR INFO</b>\n\n";
-        $text .= "• ID: <code>$userId</code>\n";
-        $text .= "• Name: $firstname\n";
-        $text .= "• Username: @$username\n";
-        $text .= "• Plan: $plan\n";
-        $text .= "• Total Checks: " . ($user['checks'] ?? 0) . "\n";
-        $text .= "• Lives Found: " . ($user['lives'] ?? 0) . "\n";
-        $text .= "• Joined: " . (isset($user['registered']) ? date('d M Y', $user['registered']) : 'Today');
+        $text = "『 $botName ─ INFO 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👤 <b>User ID:</b> <code>$userId</code>\n";
+        $text .= "📝 <b>Name:</b> $firstname\n";
+        $text .= "🔰 <b>Username:</b> @$username\n";
+        $text .= "💎 <b>Plan:</b> $plan\n";
+        $text .= "📊 <b>Checks:</b> " . ($user['checks'] ?? 0) . "\n";
+        $text .= "✅ <b>Lives:</b> " . ($user['lives'] ?? 0) . "\n";
+        $text .= "📅 <b>Joined:</b> " . (isset($user['registered']) ? date('d M Y', $user['registered']) : 'Today') . "\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -959,11 +882,12 @@ switch ($cmd) {
             }
         }
         
-        $text = "📊 <b>YOUR STATISTICS</b>\n\n";
-        $text .= "• Total Checks: $totalChecks\n";
-        $text .= "• Total Lives: $totalLives\n";
-        $text .= "• Success Rate: " . ($totalChecks > 0 ? round(($totalLives / $totalChecks) * 100, 1) : 0) . "%\n\n";
-        
+        $text = "『 $botName ─ MY STATS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "📊 <b>Total Checks:</b> $totalChecks\n";
+        $text .= "✅ <b>Total Lives:</b> $totalLives\n";
+        $text .= "📈 <b>Success Rate:</b> " . ($totalChecks > 0 ? round(($totalLives / $totalChecks) * 100, 1) : 0) . "%\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "<b>Last 7 Days:</b>\n";
         for ($i = 6; $i >= 0; $i--) {
             $day = date('Y-m-d', strtotime("-$i days"));
@@ -971,6 +895,7 @@ switch ($cmd) {
                 $text .= "• " . date('d M', strtotime($day)) . ": {$userStats[$day]['checks']} checks, {$userStats[$day]['lives']} lives\n";
             }
         }
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -985,11 +910,12 @@ switch ($cmd) {
         $lives = array_reverse($lives);
         
         if (empty($lives)) {
-            sendMessage($chatId, "📭 No live cards yet", $msgId);
+            sendMessage($chatId, "『 $botName ─ LIVES 』\n━━━━━━━━━━━━━━━━━━━━━━━\n📭 No live cards yet\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
-        $text = "✅ <b>RECENT LIVE CARDS</b>\n\n";
+        $text = "『 $botName ─ LIVES 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $count = 0;
         foreach ($lives as $live) {
             if ($count++ >= 10) break;
@@ -997,6 +923,7 @@ switch ($cmd) {
             $text .= "└ {$live['gate']} - {$live['bank']}\n";
             $text .= "└ {$live['time']}\n\n";
         }
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -1010,13 +937,15 @@ switch ($cmd) {
         
         $info = binLookup($bin);
         
-        $text = "🔍 <b>BIN LOOKUP</b>\n\n";
-        $text .= "• BIN: <code>$bin</code>\n";
-        $text .= "• Brand: {$info['brand']}\n";
-        $text .= "• Type: {$info['type']}\n";
-        $text .= "• Bank: {$info['bank']}\n";
-        $text .= "• Country: {$info['country']} {$info['emoji']}\n";
-        $text .= "• Currency: {$info['currency']}";
+        $text = "『 $botName ─ BIN 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "🔍 <b>BIN:</b> <code>$bin</code>\n";
+        $text .= "💳 <b>Brand:</b> {$info['brand']}\n";
+        $text .= "📝 <b>Type:</b> {$info['type']}\n";
+        $text .= "🏦 <b>Bank:</b> {$info['bank']}\n";
+        $text .= "🌍 <b>Country:</b> {$info['country']} {$info['emoji']}\n";
+        $text .= "💰 <b>Currency:</b> {$info['currency']}\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -1036,14 +965,19 @@ switch ($cmd) {
         $format = explode(' ', $args)[0];
         $qty = count($cards);
         
-        $text = "🎴 <b>GENERATED CARDS ($qty)</b>\n";
-        $text .= "Format: $format\n\n";
+        $text = "『 $botName ─ GENERATOR 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "🎴 <b>Generated ($qty) cards</b>\n";
+        $text .= "📝 Format: $format\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         foreach ($cards as $card) {
             $parts = explode('|', $card);
-            $display = substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
+            $display = formatCard($card);
             $text .= "<code>$display|{$parts[1]}|{$parts[2]}|{$parts[3]}</code>\n";
         }
-        $text .= "\nGenerated by: @$username";
+        $text .= "\n━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👤 Generated by: @$username\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -1057,15 +991,17 @@ switch ($cmd) {
             break;
         }
         
-        $text = "📍 <b>ADDRESS GENERATOR</b>\n\n";
-        $text .= "• Name: {$address['first']} {$address['last']}\n";
-        $text .= "• Street: {$address['street']}\n";
-        $text .= "• City: {$address['city']}\n";
-        $text .= "• State: {$address['state']}\n";
-        $text .= "• Zip: {$address['postcode']}\n";
-        $text .= "• Country: {$address['country']}\n";
-        $text .= "• Phone: {$address['phone']}\n";
-        $text .= "• Email: {$address['email']}";
+        $text = "『 $botName ─ ADDRESS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👤 <b>Name:</b> {$address['first']} {$address['last']}\n";
+        $text .= "🏠 <b>Street:</b> {$address['street']}\n";
+        $text .= "🌆 <b>City:</b> {$address['city']}\n";
+        $text .= "📍 <b>State:</b> {$address['state']}\n";
+        $text .= "📮 <b>Zip:</b> {$address['postcode']}\n";
+        $text .= "🌍 <b>Country:</b> {$address['country']}\n";
+        $text .= "📞 <b>Phone:</b> {$address['phone']}\n";
+        $text .= "📧 <b>Email:</b> {$address['email']}\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
@@ -1077,14 +1013,19 @@ switch ($cmd) {
             break;
         }
         
-        $waitMsg = sendMessage($chatId, "⏳ Checking Stripe Key...");
+        $waitMsg = sendMessage($chatId, "『 $botName ─ KEY CHECK 』\n━━━━━━━━━━━━━━━━━━━━━━━\n⏳ Checking Stripe Key...\n━━━━━━━━━━━━━━━━━━━━━━━");
         $result = toolSk($key);
-        editMessage($chatId, $waitMsg, "🔑 <b>STRIPE KEY CHECK</b>\n\n<code>$key</code>\n\n$result");
+        $text = "『 $botName ─ KEY CHECK 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "🔑 <b>Key:</b> <code>$key</code>\n";
+        $text .= "📊 <b>Result:</b> $result\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
+        editMessage($chatId, $waitMsg, $text);
         break;
     
     case '/mass':
         if (!isPremium($userId) && !isAdmin($userId)) {
-            sendMessage($chatId, "⭐ <b>Mass Check requires Premium!</b>\nBuy premium: /buy\nRedeem key: /redeem", $msgId);
+            sendMessage($chatId, "『 $botName ─ PREMIUM 』\n━━━━━━━━━━━━━━━━━━━━━━━\n⭐ <b>Mass Check requires Premium!</b>\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1111,7 +1052,7 @@ switch ($cmd) {
                     }
                 }
                 
-                sendMessage($chatId, "📁 File loaded: " . count($cards) . " cards");
+                sendMessage($chatId, "📁 File loaded: " . count($cards) . " cards", $msgId);
             }
         }
         
@@ -1138,12 +1079,7 @@ switch ($cmd) {
         }
         
         if (empty($cards)) {
-            $text = "❌ <b>No valid cards!</b>\n\n";
-            $text .= "📝 <b>Usage:</b>\n";
-            $text .= "1. /mass\n4111111111111111|12|25|123\n\n";
-            $text .= "2. Reply to message with cards\n\n";
-            $text .= "3. Upload .txt file with cards";
-            
+            $text = "『 $botName ─ MASS 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ <b>No valid cards!</b>\n━━━━━━━━━━━━━━━━━━━━━━━";
             sendMessage($chatId, $text, $msgId);
             break;
         }
@@ -1153,7 +1089,7 @@ switch ($cmd) {
         
         if ($total > $limit) {
             $cards = array_slice($cards, 0, $limit);
-            sendMessage($chatId, "⚠️ Max $limit cards. First $limit will be checked.");
+            sendMessage($chatId, "⚠️ Max $limit cards. First $limit will be checked.", $msgId);
         }
         
         massCheck($cards, $userId, $chatId, $msgId);
@@ -1171,7 +1107,8 @@ switch ($cmd) {
         }
         
         if (!$card) {
-            sendMessage($chatId, "❌ Use: $cmd 4111111111111111|12|25|123\nOr reply to a card", $msgId);
+            $gateName = strtoupper(substr($cmd, 1));
+            sendMessage($chatId, "『 $botName ─ $gateName 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Use: $cmd 4111111111111111|12|25|123\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1179,12 +1116,14 @@ switch ($cmd) {
         $premiumGates = ['/br', '/chk', '/sf'];
         
         if (in_array($cmd, $premiumGates) && !isPremium($userId) && !isAdmin($userId)) {
-            sendMessage($chatId, "⭐ Premium gate! Buy: /buy\nRedeem: /redeem", $msgId);
+            sendMessage($chatId, "『 $botName ─ PREMIUM 』\n━━━━━━━━━━━━━━━━━━━━━━━\n⭐ <b>This gate requires Premium!</b>\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $gateName = strtoupper(substr($cmd, 1));
-        $waitMsg = sendMessage($chatId, "⏳ Checking $gateName...");
+        $fullGateName = $gateName == 'STR' ? 'STRIPE AUTH' : ($gateName == 'AU' ? 'QEE PAYPAL' : ($gateName == 'BR' ? 'PAYPAL CHARGE' : ($gateName == 'CHK' ? 'STRIPE CHARGE' : 'SHOPIFY IYZICO')));
+        
+        $waitMsg = sendMessage($chatId, "『 $botName ─ $fullGateName 』\n━━━━━━━━━━━━━━━━━━━━━━━\n⏳ <b>Processing...</b>\n━━━━━━━━━━━━━━━━━━━━━━━");
         
         switch ($cmd) {
             case '/str': $result = gateStripe($card['full']); break;
@@ -1200,26 +1139,32 @@ switch ($cmd) {
             saveLive($card['full'], $gateName, $result['binfo'], $userId);
         }
         
-        $formatted = substr($card['cc'], 0, 4) . ' ' . substr($card['cc'], 4, 4) . ' ' . substr($card['cc'], 8, 4) . ' ' . substr($card['cc'], 12, 4);
-        $icon = $result['status'] == 'LIVE' ? '✅' : '❌';
+        $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
+        $statusText = $result['status'] == 'LIVE' ? 'LIVE' : 'DEAD';
         
-        $text = "<b>{$icon} $gateName RESULT</b>\n\n";
-        $text .= "💳 Card: <code>$formatted|{$card['mm']}|{$card['yy']}|{$card['cvv']}</code>\n";
-        $text .= "📊 Status: <b>{$result['status']}</b>\n";
-        $text .= "📝 Response: {$result['msg']}\n";
-        $text .= "⏱️ Time: {$result['time']}s\n\n";
-        $text .= "🏦 Bank: {$result['binfo']['bank']}\n";
-        $text .= "💳 Brand: {$result['binfo']['brand']} - {$result['binfo']['type']}\n";
-        $text .= "🌍 Country: {$result['binfo']['country']} {$result['binfo']['emoji']}\n\n";
-        $text .= "👤 Checked by: @$username\n";
-        $text .= "📢 Updates: @RG3741";
+        $formattedCard = formatCard($card['full']);
+        $planBadge = getUserPlan($userId);
+        
+        $text = "『 $botName ─ $fullGateName 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "💳 <b>Card</b> ➜ <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>\n";
+        $text .= "📊 <b>Status</b> ➜ $statusText $statusIcon\n";
+        $text .= "📝 <b>Response</b> ➜ {$result['msg']}\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "💳 <b>Info</b> ➜ {$result['binfo']['brand']} - {$result['binfo']['type']} - {$result['binfo']['level']}\n";
+        $text .= "🏦 <b>Bank</b> ➜ {$result['binfo']['bank']}\n";
+        $text .= "🌍 <b>Country</b> ➜ {$result['binfo']['country']} {$result['binfo']['emoji']} - {$result['binfo']['currency']}\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👤 <b>Checked by</b> ➜ @$username [ $planBadge ]\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "『 @RG3741 // RG374 』";
         
         editMessage($chatId, $waitMsg, $text);
         break;
     
     case '/admin':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1240,42 +1185,45 @@ switch ($cmd) {
         $activeKeys = count(array_filter($keys, fn($k) => $k['active']));
         $usedKeys = count(array_filter($keys, fn($k) => !$k['active']));
         
-        $text = "👑 <b>ADMIN PANEL</b>\n\n";
+        $text = "『 $botName ─ ADMIN 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👑 <b>ADMIN PANEL</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "📊 <b>TODAY</b>\n";
         $text .= "• Checks: {$todayStats['total']}\n";
-        $text .= "• Lives: {$todayStats['lives']}\n";
-        $text .= "• Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%\n\n";
+        $text .= "• Lives: {$todayStats['lives']}\n\n";
         $text .= "📈 <b>ALL TIME</b>\n";
-        $text .= "• Total Checks: $totalChecks\n";
-        $text .= "• Total Lives: $totalLives\n\n";
+        $text .= "• Checks: $totalChecks\n";
+        $text .= "• Lives: $totalLives\n\n";
         $text .= "👥 <b>USERS</b>\n";
         $text .= "• Registered: " . count($users) . "\n";
         $text .= "• Premium: " . count(array_filter($users, fn($u) => $u['plan'] == 'premium' && $u['expiry'] > time())) . "\n\n";
         $text .= "🔑 <b>KEYS</b>\n";
         $text .= "• Active: $activeKeys\n";
-        $text .= "• Used: $usedKeys\n\n";
-        $text .= "━━━━━━━━━━━━━━━━\n";
+        $text .= "• Used: $usedKeys\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "<b>Commands:</b>\n";
-        $text .= "/genkey [plan] [days] - Generate key\n";
-        $text .= "/keys - List all keys\n";
-        $text .= "/users - List users\n";
-        $text .= "/broadcast [msg] - Send to all\n";
-        $text .= "/setprice [plan] [usd] [inr] - Set prices\n";
-        $text .= "/maintenance - Toggle maintenance\n";
-        $text .= "/chstats - Channel stats";
+        $text .= "/genkey [plan] [days]\n";
+        $text .= "/keys\n";
+        $text .= "/users\n";
+        $text .= "/broadcast [msg]\n";
+        $text .= "/setprice [plan] [usd] [inr]\n";
+        $text .= "/maintenance\n";
+        $text .= "/chstats\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/genkey':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $parts = explode(' ', $args);
         if (count($parts) < 2) {
-            sendMessage($chatId, "❌ Use: /genkey [plan] [days]\nPlans: daily, weekly, monthly, yearly", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Use: /genkey [plan] [days]\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1283,17 +1231,21 @@ switch ($cmd) {
         $days = (int)$parts[1];
         
         if (!in_array($plan, ['daily', 'weekly', 'monthly', 'yearly'])) {
-            sendMessage($chatId, "❌ Invalid plan! Use: daily, weekly, monthly, yearly", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Invalid plan!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $key = generateKey($plan, $days);
         $planNames = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
         
-        $text = "🔑 <b>KEY GENERATED</b>\n\n";
-        $text .= "Key: <code>$key</code>\n";
-        $text .= "Plan: {$planNames[$plan]}\n";
-        $text .= "Days: $days\n\n";
+        $text = "『 $botName ─ KEY 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "🔑 <b>Key Generated</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "📝 <b>Key:</b> <code>$key</code>\n";
+        $text .= "📊 <b>Plan:</b> {$planNames[$plan]}\n";
+        $text .= "⏱️ <b>Days:</b> $days\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
         $text .= "User can redeem with:\n/redeem $key";
         
         sendMessage($chatId, $text, $msgId);
@@ -1301,7 +1253,7 @@ switch ($cmd) {
     
     case '/keys':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1309,22 +1261,25 @@ switch ($cmd) {
         $active = array_filter($keys, fn($k) => $k['active']);
         $used = array_filter($keys, fn($k) => !$k['active']);
         
-        $text = "🔑 <b>KEYS LIST</b>\n\n";
-        $text .= "✅ <b>ACTIVE KEYS (" . count($active) . ")</b>\n";
+        $text = "『 $botName ─ KEYS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "✅ <b>Active Keys (" . count($active) . ")</b>\n";
         foreach (array_slice($active, 0, 10) as $key => $k) {
-            $text .= "• <code>$key</code> - " . ucfirst($k['plan']) . " - " . date('d M', $k['created']) . "\n";
+            $text .= "• <code>$key</code> - " . ucfirst($k['plan']) . "\n";
         }
-        $text .= "\n❌ <b>USED KEYS (" . count($used) . ")</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "❌ <b>Used Keys (" . count($used) . ")</b>\n";
         foreach (array_slice($used, 0, 5) as $key => $k) {
             $text .= "• <code>$key</code> - Used by {$k['used_by']}\n";
         }
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/users':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1334,55 +1289,58 @@ switch ($cmd) {
         $start = ($page - 1) * $perPage;
         $usersList = array_slice($users, $start, $perPage, true);
         
-        $text = "👥 <b>USERS LIST (Page $page)</b>\n\n";
+        $text = "『 $botName ─ USERS 』\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "👥 <b>Users List (Page $page)</b>\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         foreach ($usersList as $id => $user) {
             $premium = ($user['plan'] == 'premium' && $user['expiry'] > time()) ? '⭐' : '⚪';
             $text .= "$premium <code>$id</code> - @{$user['username']}\n";
-            $text .= "└ Checks: {$user['checks']} | Lives: {$user['lives']}\n";
+            $text .= "└ Checks: {$user['checks']} | Lives: {$user['lives']}\n\n";
         }
-        
         $totalPages = ceil(count($users) / $perPage);
-        $text .= "\nPage $page of $totalPages\n";
-        $text .= "Use /users [page] to navigate";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━\n";
+        $text .= "Page $page of $totalPages\n";
+        $text .= "━━━━━━━━━━━━━━━━━━━━━━━";
         
         sendMessage($chatId, $text, $msgId);
         break;
     
     case '/broadcast':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $msg = $args;
         if (!$msg) {
-            sendMessage($chatId, "❌ Use: /broadcast Your message", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Use: /broadcast Your message\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $users = json_decode(file_get_contents($usersDB), true);
         $sent = 0;
         
-        sendMessage($chatId, "📢 Broadcasting to " . count($users) . " users...", $msgId);
+        sendMessage($chatId, "『 $botName ─ BROADCAST 』\n━━━━━━━━━━━━━━━━━━━━━━━\n📢 Sending to " . count($users) . " users...\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
         
         foreach ($users as $uid => $u) {
-            sendMessage($uid, "📢 <b>BROADCAST</b>\n\n$msg\n\n- @HELOBIY41\n📢 @RG3741");
+            sendMessage($uid, "『 $botName ─ BROADCAST 』\n━━━━━━━━━━━━━━━━━━━━━━━\n📢 <b>Message:</b>\n$msg\n━━━━━━━━━━━━━━━━━━━━━━━\n- @HELOBIY41\n📢 @RG3741");
             $sent++;
             usleep(100000);
         }
         
-        sendMessage($chatId, "✅ Sent to $sent users", $msgId);
+        sendMessage($chatId, "『 $botName ─ BROADCAST 』\n━━━━━━━━━━━━━━━━━━━━━━━\n✅ Sent to $sent users\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
         break;
     
     case '/setprice':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
         $parts = explode(' ', $args);
         if (count($parts) < 3) {
-            sendMessage($chatId, "❌ Use: /setprice [plan] [usd] [inr]\nPlans: daily, weekly, monthly, yearly", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Use: /setprice [plan] [usd] [inr]\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1391,7 +1349,7 @@ switch ($cmd) {
         $inr = (float)$parts[2];
         
         if (!in_array($plan, ['daily', 'weekly', 'monthly', 'yearly'])) {
-            sendMessage($chatId, "❌ Invalid plan!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Invalid plan!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1399,12 +1357,12 @@ switch ($cmd) {
         $settings['prices'][$plan] = ['usd' => $usd, 'inr' => $inr];
         file_put_contents($settingsDB, json_encode($settings, JSON_PRETTY_PRINT));
         
-        sendMessage($chatId, "✅ Price updated!\n$plan: \$$usd / ₹$inr", $msgId);
+        sendMessage($chatId, "『 $botName ─ PRICES 』\n━━━━━━━━━━━━━━━━━━━━━━━\n✅ Price updated!\n$plan: \$$usd / ₹$inr\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
         break;
     
     case '/maintenance':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1413,12 +1371,12 @@ switch ($cmd) {
         file_put_contents($settingsDB, json_encode($settings, JSON_PRETTY_PRINT));
         
         $status = $settings['maintenance'] ? 'ON' : 'OFF';
-        sendMessage($chatId, "🔧 Maintenance mode: $status", $msgId);
+        sendMessage($chatId, "『 $botName ─ MAINTENANCE 』\n━━━━━━━━━━━━━━━━━━━━━━━\n🔧 Mode: $status\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
         break;
     
     case '/chstats':
         if (!isAdmin($userId)) {
-            sendMessage($chatId, "❌ Admin only!", $msgId);
+            sendMessage($chatId, "『 $botName ─ ADMIN 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Admin only!\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
             break;
         }
         
@@ -1432,7 +1390,7 @@ switch ($cmd) {
     
     default:
         if ($message[0] == '/') {
-            sendMessage($chatId, "❌ Unknown command. Use /cmds", $msgId);
+            sendMessage($chatId, "『 $botName 』\n━━━━━━━━━━━━━━━━━━━━━━━\n❌ Unknown command. Use /cmds\n━━━━━━━━━━━━━━━━━━━━━━━", $msgId);
         }
         break;
 }
