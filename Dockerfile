@@ -10,7 +10,7 @@ WORKDIR /app
 COPY . .
 
 # Install Python dependencies with --break-system-packages
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r Requirements.txt
 
 # Make Python scripts executable
 RUN chmod +x *.py
