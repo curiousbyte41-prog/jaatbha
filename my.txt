@@ -6,7 +6,7 @@
  */
 
 // ===== CONFIGURATION =====
-$botToken = "8783459954:AAGAF-LwI2EtaPxyXaNlJmg-d8Luf4QshBC";
+$botToken = "8783459954:AAGAf-LwIZEtaPyxIaw1imq-dBLuf4QshBc";
 $ownerId = 6185091342;
 $ownerUsername = "@HELOBIY41";
 $botName = "⚡️ XYRO ELITE";
