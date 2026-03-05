@@ -18,11 +18,6 @@ $channels = [
     ['name' => 'XYRO GROUP', 'link' => 'https://t.me/+dBq_hcC66UUzYTY1', 'username' => 'group'],
     ['name' => 'XYRO HITS', 'link' => 'https://t.me/+WeL7kfcghSUxYWNl', 'username' => 'group']
 ];
-
-// ===== REST OF YOUR CODE =====
-// ... (baaki code waisa hi rahega)
-?>
-
 // ===== DEFAULT PRICES =====
 $defaultPrices = [
     'daily' => ['usd' => 1, 'inr' => 80],
