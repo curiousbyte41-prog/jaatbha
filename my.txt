@@ -1,7 +1,8 @@
 <?php
 /**
- * BS XYRO BOT - FINAL VERSION WITH IMAGE UPLOAD
+ * BS XYRO BOT - ULTIMATE EDITION WITH ALL FEATURES
  * @author @HELOBIY41
+ * @version 3.0
  */
 
 // ===== CONFIGURATION =====
@@ -18,6 +19,7 @@ $channels = [
     ['name' => 'XYRO GROUP', 'link' => 'https://t.me/+dBq_hcC66UUzYTY1', 'username' => 'group'],
     ['name' => 'XYRO HITS', 'link' => 'https://t.me/+WeL7kfcghSUxYWNl', 'username' => 'group']
 ];
+
 // ===== DEFAULT PRICES =====
 $defaultPrices = [
     'daily' => ['usd' => 1, 'inr' => 80],
@@ -70,6 +72,69 @@ if (empty($images)) {
         'admin' => 'https://i.ibb.co/admin.jpg'
     ];
     file_put_contents($imagesDB, json_encode($images, JSON_PRETTY_PRINT));
+}
+
+// ===== FEATURE 1: ANIMATION FRAMES =====
+function getAnimationFrame($index) {
+    $frames = ['◐', '◓', '◑', '◒'];
+    return $frames[$index % 4];
+}
+
+// ===== FEATURE 3: CARD PREVIEW =====
+function cardPreview($card, $status, $response, $time) {
+    $parts = explode('|', $card);
+    $cc = substr($parts[0], 0, 4) . ' ' . substr($parts[0], 4, 4) . ' ' . substr($parts[0], 8, 4) . ' ' . substr($parts[0], 12, 4);
+    
+    $statusIcon = $status == 'LIVE' ? '🟢' : '🔴';
+    
+    return "
+┌─────────────────────┐
+│ 💳 $cc  │
+│ 📅 {$parts[1]}|{$parts[2]}  🔒 {$parts[3]}     │
+├─────────────────────┤
+│ $statusIcon $status  $response  │
+│ ⏱️ $time seconds            │
+└─────────────────────┘";
+}
+
+// ===== FEATURE 4: PROGRESS BAR =====
+function progressBar($current, $total, $width = 15) {
+    $percentage = ($current / max($total, 1)) * 100;
+    $filled = round(($percentage / 100) * $width);
+    $empty = $width - $filled;
+    
+    return "[" . str_repeat("█", $filled) . str_repeat("░", $empty) . "] " . round($percentage, 1) . "%";
+}
+
+// ===== FEATURE 6: COLORED STATUS =====
+function colorStatus($status) {
+    $colors = [
+        'LIVE' => '🟢',
+        'DEAD' => '🔴',
+        'CCN' => '🟡',
+        'CVV' => '🟣',
+        'RISK' => '🟠'
+    ];
+    return ($colors[$status] ?? '⚪') . " " . $status;
+}
+
+// ===== FEATURE 7: MOBILE MENU =====
+function mobileMenu() {
+    return "
+╔══════════════════════╗
+║  💳  🛠️  💰  👑  📊  ║
+║ GATES TOOLS PRICE ADMIN STATS║
+╚══════════════════════╝";
+}
+
+// ===== FEATURE 8: TYPEWRITER EFFECT =====
+function typewriterText($text) {
+    $result = "";
+    $chars = str_split($text);
+    foreach ($chars as $char) {
+        $result .= $char;
+    }
+    return "`" . $result . "`";
 }
 
 // ===== FUNCTIONS =====
@@ -208,7 +273,18 @@ function getMainMenuButtons() {
         [['text' => "💳 GATES", 'callback_data' => "menu_gates"]],
         [['text' => "🛠️ TOOLS", 'callback_data' => "menu_tools"]],
         [['text' => "💰 PRICING", 'callback_data' => "menu_pricing"]],
-        [['text' => "👑 ADMIN", 'callback_data' => "menu_admin"]]
+        [['text' => "👑 ADMIN", 'callback_data' => "menu_admin"]],
+        [['text' => "📊 STATS", 'callback_data' => "menu_stats"]]
+    ];
+}
+
+// ===== GET PAYMENT BUTTONS (ONLY CRYPTO & UPI) =====
+function getPaymentButtons() {
+    return [
+        [['text' => "💎 USDT (BEP20)", 'callback_data' => "pay_usdt_bep20"]],
+        [['text' => "💎 USDT (TRC20)", 'callback_data' => "pay_usdt_trc20"]],
+        [['text' => "🇮🇳 UPI", 'callback_data' => "pay_upi"]],
+        [['text' => "🔙 BACK", 'callback_data' => "menu_pricing"]]
     ];
 }
 
@@ -219,6 +295,7 @@ function getPricingButtons() {
         [['text' => "📅 WEEKLY", 'callback_data' => "price_weekly"]],
         [['text' => "🔥 MONTHLY", 'callback_data' => "price_monthly"]],
         [['text' => "💎 YEARLY", 'callback_data' => "price_yearly"]],
+        [['text' => "💳 PAYMENT METHODS", 'callback_data' => "show_payment"]],
         [['text' => "🎟️ REDEEM", 'callback_data' => "buy_redeem"]],
         [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
     ];
@@ -456,12 +533,13 @@ function redeemKey($userId, $key) {
 }
 
 // ===== WELCOME MESSAGE =====
-function getWelcomeMessage($userId, $username, $firstname) {
+function getWelcomeMessage($userId, $username, $firstname, $frame = 0) {
     $plan = getUserPlan($userId);
+    $animFrame = getAnimationFrame($frame);
     
     $msg = "
 ╔══════════════════════╗
-║   「 👋 WELCOME 」    ║
+║   「 $animFrame WELCOME 」 ║
 ╚══════════════════════╝
 
 Hey <b>$firstname</b>! 👋
@@ -477,7 +555,8 @@ Please join all channels/groups
 to access the bot!
 
 👇 <b>Click buttons below</b>
-";
+
+" . mobileMenu();
     
     return $msg;
 }
@@ -514,12 +593,43 @@ function getPricingMessage() {
 ║ • Priority Support
 ║ • Higher Success Rate
 ╠══════════════════════╣
+║ <b>Payment Methods:</b>
+║ 💎 Crypto (USDT)
+║ 🇮🇳 UPI
+╠══════════════════════╣
 ║ Contact @HELOBIY41 to buy
 ║ Or use /redeem with key
 ╚══════════════════════╝
 ";
     
     return $msg;
+}
+
+// ===== GET PAYMENT MESSAGE =====
+function getPaymentMessage() {
+    return "
+╔══════════════════════╗
+║   「 💳 PAYMENT 」    ║
+╠══════════════════════╣
+║ <b>💎 CRYPTO (USDT)</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ <b>BEP20 Address:</b>
+║ <code>0x0a7961b6a421053e2f3e2d8deb8c25b65d0b8bf7</code>
+║
+║ <b>TRC20 Address:</b>
+║ <code>THWyGchAMFNSHX8w7Cn2orMahknF6aHPfk</code>
+╠══════════════════════╣
+║ <b>🇮🇳 UPI</b>
+║ ━━━━━━━━━━━━━━━━━━━━
+║ <b>UPI ID:</b>
+║ <code>xyro@okhdfcbank</code>
+║ <code>xyro@paytm</code>
+╠══════════════════════╣
+║ ⚠️ After payment, contact
+║ @HELOBIY41 with screenshot
+║ to get your activation key
+╚══════════════════════╝
+";
 }
 
 // ===== GET ADMIN IMAGE MESSAGE =====
@@ -542,7 +652,7 @@ function getAdminImageMessage() {
 ║ <b>To update image:</b>
 ║ 1. Click button below
 ║ 2. Send new photo
-║ 3. Bot will auto-update
+║ 3. Reply with /setimage
 ╚══════════════════════╝
 ";
     
@@ -639,6 +749,50 @@ function getLogsMessage($type = 'all') {
         };
         $msg .= "$typeIcon [{$log['time']}]\n";
         $msg .= "└ {$log['details']}\n\n";
+    }
+    $msg .= "╚══════════════════════╝";
+    
+    return $msg;
+}
+
+// ===== GET STATS MESSAGE =====
+function getStatsMessage() {
+    global $statsDB, $livesDB, $usersDB;
+    
+    $stats = json_decode(file_get_contents($statsDB), true);
+    $lives = json_decode(file_get_contents($livesDB), true);
+    $users = json_decode(file_get_contents($usersDB), true);
+    
+    $today = date('Y-m-d');
+    $todayStats = $stats[$today] ?? ['total' => 0, 'lives' => 0];
+    
+    $totalChecks = 0;
+    $totalLives = 0;
+    foreach ($stats as $day => $s) {
+        $totalChecks += $s['total'] ?? 0;
+        $totalLives += $s['lives'] ?? 0;
+    }
+    
+    $recentLives = array_slice(array_reverse($lives), 0, 5);
+    
+    $msg = "
+╔══════════════════════╗
+║   「 📊 STATS 」      ║
+╠══════════════════════╣
+║ <b>TODAY</b>
+║ • Checks: {$todayStats['total']}
+║ • Lives: {$todayStats['lives']}
+║ • Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%
+╠══════════════════════╣
+║ <b>ALL TIME</b>
+║ • Checks: $totalChecks
+║ • Lives: $totalLives
+║ • Users: " . count($users) . "
+╠══════════════════════╣
+║ <b>RECENT LIVES</b>
+";
+    foreach ($recentLives as $live) {
+        $msg .= "💳 {$live['card']} - {$live['gate']}\n";
     }
     $msg .= "╚══════════════════════╝";
     
@@ -775,16 +929,18 @@ if (isset($update['callback_query'])) {
             $users[$userId]['verified'] = true;
             file_put_contents($usersDB, json_encode($users, JSON_PRETTY_PRINT));
             
-            $msg = getWelcomeMessage($userId, $username, $firstname);
-            $welcomeImg = getImage('welcome');
-            
-            if (strpos($welcomeImg, 'http') === 0) {
-                sendPhoto($chatId, $welcomeImg, $msg, getMainMenuButtons());
-            } else {
-                sendPhoto($chatId, $welcomeImg, $msg, getMainMenuButtons());
+            for ($i = 0; $i < 4; $i++) {
+                $msg = getWelcomeMessage($userId, $username, $firstname, $i);
+                $welcomeImg = getImage('welcome');
+                
+                if ($i == 0) {
+                    sendPhoto($chatId, $welcomeImg, $msg, getMainMenuButtons());
+                    file_get_contents($website . "/deleteMessage?chat_id=$chatId&message_id=$msgId");
+                } else {
+                    sleep(1);
+                    editMessagePhoto($chatId, $msgId, $welcomeImg, $msg, getMainMenuButtons());
+                }
             }
-            
-            file_get_contents($website . "/deleteMessage?chat_id=$chatId&message_id=$msgId");
         } else {
             file_get_contents($website . "/answerCallbackQuery?callback_query_id=" . $callback['id'] . "&text=❌ You haven't joined all channels!&show_alert=true");
         }
@@ -880,6 +1036,47 @@ if (isset($update['callback_query'])) {
         exit;
     }
     
+    // Handle show payment
+    if ($data == 'show_payment') {
+        editMessage($chatId, $msgId, getPaymentMessage(), getPaymentButtons());
+        exit;
+    }
+    
+    // Handle payment methods
+    if (strpos($data, 'pay_') === 0) {
+        $method = str_replace('pay_', '', $data);
+        
+        $addresses = [
+            'usdt_bep20' => '0x0a7961b6a421053e2f3e2d8deb8c25b65d0b8bf7',
+            'usdt_trc20' => 'THWyGchAMFNSHX8w7Cn2orMahknF6aHPfk',
+            'upi' => 'xyro@okhdfcbank'
+        ];
+        
+        $names = [
+            'usdt_bep20' => 'USDT (BEP20)',
+            'usdt_trc20' => 'USDT (TRC20)',
+            'upi' => 'UPI'
+        ];
+        
+        $text = "
+╔══════════════════════╗
+║   「 {$names[$method]} 」  ║
+╠══════════════════════╣
+║ <b>Address:</b>
+║ <code>{$addresses[$method]}</code>
+╠══════════════════════╣
+║ ⚠️ After payment:
+║ 1. Take screenshot
+║ 2. Send to @HELOBIY41
+║ 3. Get activation key
+╚══════════════════════╝
+";
+        editMessage($chatId, $msgId, $text, [
+            [['text' => "🔙 BACK", 'callback_data' => "show_payment"]]
+        ]);
+        exit;
+    }
+    
     // Handle price details
     if (strpos($data, 'price_') === 0) {
         $plan = str_replace('price_', '', $data);
@@ -902,10 +1099,15 @@ if (isset($update['callback_query'])) {
             'yearly' => '365 Days'
         } . "
 ╠══════════════════════╣
+║ <b>Payment:</b>
+║ • Crypto (USDT)
+║ • UPI
+╠══════════════════════╣
 ║ Contact @HELOBIY41 to buy
 ╚══════════════════════╝
 ";
         editMessage($chatId, $msgId, $text, [
+            [['text' => "💳 PAY NOW", 'callback_data' => "show_payment"]],
             [['text' => "🔙 BACK", 'callback_data' => "menu_pricing"]]
         ]);
         exit;
@@ -915,6 +1117,15 @@ if (isset($update['callback_query'])) {
     if ($data == 'buy_redeem') {
         editMessage($chatId, $msgId, "🎟️ Send your key:\n<code>/redeem XXXX-XXXX-XXXX-XXXX</code>", [
             [['text' => "🔙 BACK", 'callback_data' => "menu_pricing"]]
+        ]);
+        exit;
+    }
+    
+    // Handle stats menu
+    if ($data == 'menu_stats') {
+        editMessage($chatId, $msgId, getStatsMessage(), [
+            [['text' => "🔄 REFRESH", 'callback_data' => "menu_stats"]],
+            [['text' => "🔙 BACK", 'callback_data' => "main_menu"]]
         ]);
         exit;
     }
@@ -1214,9 +1425,18 @@ $args = trim(substr($message, strlen($cmd)));
 switch ($cmd) {
     
     case '/start':
-        $welcomeMsg = getWelcomeMessage($userId, $username, $firstname);
-        $welcomeImg = getImage('welcome');
-        sendPhoto($chatId, $welcomeImg, $welcomeMsg, getMainMenuButtons());
+        // Animated welcome
+        for ($i = 0; $i < 4; $i++) {
+            $welcomeMsg = getWelcomeMessage($userId, $username, $firstname, $i);
+            $welcomeImg = getImage('welcome');
+            
+            if ($i == 0) {
+                sendPhoto($chatId, $welcomeImg, $welcomeMsg, getMainMenuButtons());
+            } else {
+                sleep(1);
+                editMessagePhoto($chatId, $msgId, $welcomeImg, $welcomeMsg, getMainMenuButtons());
+            }
+        }
         break;
     
     // FREE GATES (with rate limit)
@@ -1262,14 +1482,15 @@ switch ($cmd) {
         
         $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
         $formattedCard = formatCard($card['full']);
+        $coloredStatus = colorStatus($result['status']);
         
         $text = "
 ╔══════════════════════╗
 ║   「 $gateName 」   ║
 ╠══════════════════════╣
-║ 💳 Card: <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>
-║ 📊 Status: {$result['status']} $statusIcon
-║ 📝 Response: {$result['msg']}
+" . cardPreview($card['full'], $result['status'], $result['msg'], $result['time'] ?? 0) . "
+╠══════════════════════╣
+║ Status: $coloredStatus
 ╚══════════════════════╝
 ";
         
@@ -1320,14 +1541,15 @@ switch ($cmd) {
         
         $statusIcon = $result['status'] == 'LIVE' ? '✅' : '❌';
         $formattedCard = formatCard($card['full']);
+        $coloredStatus = colorStatus($result['status']);
         
         $text = "
 ╔══════════════════════╗
 ║   「 $gateName 」   ║
 ╠══════════════════════╣
-║ 💳 Card: <code>$formattedCard|{$card['mm']}|{$card['yy']}</code>
-║ 📊 Status: {$result['status']} $statusIcon
-║ 📝 Response: {$result['msg']}
+" . cardPreview($card['full'], $result['status'], $result['msg'], $result['time'] ?? 0) . "
+╠══════════════════════╣
+║ Status: $coloredStatus
 ╚══════════════════════╝
 ";
         
@@ -1455,13 +1677,19 @@ switch ($cmd) {
         }
         
         $users = json_decode(file_get_contents($usersDB), true);
+        $total = count($users);
+        $premium = count(array_filter($users, fn($u) => $u['plan'] == 'premium'));
+        $banned = count(array_filter($users, fn($u) => $u['banned'] ?? false));
+        
         $text = "
 ╔══════════════════════╗
 ║   「 USERS LIST 」    ║
 ╠══════════════════════╣
-║ Total: " . count($users) . "
-║ Premium: " . count(array_filter($users, fn($u) => $u['plan'] == 'premium')) . "
-║ Banned: " . count(array_filter($users, fn($u) => $u['banned'] ?? false)) . "
+║ Total: $total
+║ Premium: $premium
+║ Banned: $banned
+╠══════════════════════╣
+║ <code>/user [id]</code> - View details
 ╚══════════════════════╝
 ";
         
@@ -1523,16 +1751,17 @@ switch ($cmd) {
         
         $users = json_decode(file_get_contents($usersDB), true);
         $sent = 0;
+        $total = count($users);
         
-        $progressMsg = sendMessage($chatId, "📢 Broadcasting to " . count($users) . " users...");
+        $progressMsg = sendMessage($chatId, "📢 Broadcasting to $total users...\n" . progressBar(0, $total));
         
         foreach ($users as $uid => $u) {
             if ($u['banned'] ?? false) continue;
             sendMessage($uid, "『 BROADCAST 』\n━━━━━━━━━━━━━━━━━━━━━━━\n$msg\n━━━━━━━━━━━━━━━━━━━━━━━");
             $sent++;
             
-            if ($sent % 10 == 0) {
-                editMessage($chatId, $progressMsg, "📢 Sent: $sent/" . count($users));
+            if ($sent % 5 == 0 || $sent == $total) {
+                editMessage($chatId, $progressMsg, "📢 Broadcasting...\nSent: $sent/$total\n" . progressBar($sent, $total));
             }
             usleep(100000);
         }
@@ -1679,7 +1908,7 @@ switch ($cmd) {
             break;
         }
         
-        $waitMsg = sendMessage($chatId, "⏳ Checking Stripe Key...");
+        $waitMsg = sendMessage($chatId, "⏳ Checking Stripe Key...\n" . progressBar(0, 100));
         
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/tokens');
@@ -1740,33 +1969,7 @@ switch ($cmd) {
         break;
     
     case '/stats':
-        $stats = json_decode(file_get_contents($statsDB), true);
-        $today = date('Y-m-d');
-        $todayStats = $stats[$today] ?? ['total' => 0, 'lives' => 0];
-        
-        $totalChecks = 0;
-        $totalLives = 0;
-        foreach ($stats as $day => $s) {
-            $totalChecks += $s['total'] ?? 0;
-            $totalLives += $s['lives'] ?? 0;
-        }
-        
-        $text = "
-╔══════════════════════╗
-║    「 STATS 」        ║
-╠══════════════════════╣
-║ TODAY
-║ • Checks: {$todayStats['total']}
-║ • Lives: {$todayStats['lives']}
-║ • Rate: " . ($todayStats['total'] > 0 ? round(($todayStats['lives'] / $todayStats['total']) * 100, 1) : 0) . "%
-╠══════════════════════╣
-║ ALL TIME
-║ • Checks: $totalChecks
-║ • Lives: $totalLives
-╚══════════════════════╝
-";
-        
-        sendMessage($chatId, $text, $msgId);
+        sendMessage($chatId, getStatsMessage(), $msgId);
         break;
     
     case '/credits':
